@@ -1,9 +1,11 @@
 build/*
+/build-*/
 /bin
 /out
 /.vscode
 /.vs
 /*.zip
+/local-toolchain
 external/slang/windows-x64/release/slang-stdlib.bin
 /external/dx12-agility-sdk
 /external/nvapi
@@ -16,4 +18,5 @@ __pycache__/
 # Generated shaders+weights from SlangPyTraining.
 samples/SlangpyTraining/trained_shaders.cfg
 samples/SlangpyTraining/weights.json
+samples/HeadlessPbrPy/*.ppm
 

@@ -1,0 +1,82 @@
+#include "headless_pbr.h"
+
+#include <string>
+
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+
+namespace py = pybind11;
+
+PYBIND11_MODULE(RtxRenderPy, m)
+{
+    m.doc() = "Headless Vulkan PBR renderer bindings for RTXNS";
+
+    py::class_<rtxns::python::HeadlessPbrScene, std::shared_ptr<rtxns::python::HeadlessPbrScene>>(m, "Scene")
+        .def("load_scene",
+            [](rtxns::python::HeadlessPbrScene& self, const std::string& path)
+            {
+                py::gil_scoped_release release;
+                self.load_scene(path);
+            },
+            py::arg("path"))
+        .def("set_camera",
+            &rtxns::python::HeadlessPbrScene::set_camera,
+            py::arg("position"),
+            py::arg("target"),
+            py::arg("up"),
+            py::arg("fov_degrees"),
+            py::arg("width"),
+            py::arg("height"),
+            py::arg("z_near") = 0.1f,
+            py::arg("z_far") = 1000.0f)
+        .def("set_ambient",
+            &rtxns::python::HeadlessPbrScene::set_ambient,
+            py::arg("top_rgb"),
+            py::arg("bottom_rgb"))
+        .def("set_default_light",
+            &rtxns::python::HeadlessPbrScene::set_default_light,
+            py::arg("direction"),
+            py::arg("color") = std::array<float, 3>{1.0f, 1.0f, 1.0f},
+            py::arg("irradiance") = 2.0f)
+        .def("render_frame",
+            [](rtxns::python::HeadlessPbrScene& self)
+            {
+                auto pixels = [&self]()
+                {
+                    py::gil_scoped_release release;
+                    return self.render_frame();
+                }();
+
+                return py::bytes(
+                    reinterpret_cast<const char*>(pixels.data()),
+                    static_cast<py::ssize_t>(pixels.size()));
+            })
+        .def_property_readonly("width", &rtxns::python::HeadlessPbrScene::width)
+        .def_property_readonly("height", &rtxns::python::HeadlessPbrScene::height);
+
+    m.def("init",
+        [](const std::string& runtime_dir, const std::string& backend, int device_index, bool enable_debug)
+        {
+            rtxns::python::ContextInitOptions options;
+            options.runtime_dir = runtime_dir;
+            options.backend = backend;
+            options.device_index = device_index;
+            options.enable_debug = enable_debug;
+
+            py::gil_scoped_release release;
+            rtxns::python::initialize(options);
+        },
+        py::arg("runtime_dir") = "",
+        py::arg("backend") = "vulkan",
+        py::arg("device_index") = -1,
+        py::arg("enable_debug") = false);
+
+    m.def("create_scene", &rtxns::python::create_scene);
+
+    m.def("destroy",
+        []()
+        {
+            py::gil_scoped_release release;
+            rtxns::python::shutdown();
+        });
+}

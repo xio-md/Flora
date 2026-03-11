@@ -8,7 +8,15 @@
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 set(LIBRARY_FILTER src)
-add_subdirectory(NeuralShading)
-add_subdirectory(Utils)
-add_subdirectory(NeuralShading_Shaders)
+if (RTXNS_BUILD_NEURAL_COMPONENTS)
+    add_subdirectory(NeuralShading)
+    add_subdirectory(Utils)
+    add_subdirectory(NeuralShading_Shaders)
+endif()
+
+option(RTXNS_BUILD_PYTHON_BINDINGS "Build the headless Python renderer bindings" OFF)
+
+if (RTXNS_BUILD_PYTHON_BINDINGS)
+    add_subdirectory(PythonBindings)
+endif()
 

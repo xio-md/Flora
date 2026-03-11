@@ -24,6 +24,8 @@ option(DONUT_WITH_DX11 "Not supported in this SDK" OFF)
 option(DONUT_WITH_DX12 "DX12 is only supported with DX12_COOP_VECTOR_PREVIEW ON" OFF)
 option(DONUT_WITH_VULKAN "" ON)
 option(DONUT_WITH_STATIC_SHADERS "" ON)
+option(RTXNS_BUILD_NEURAL_COMPONENTS "Build neural shading libraries and utilities" ON)
+option(RTXNS_BUILD_SAMPLES "Build the sample applications" ON)
 
 set(DONUT_DIR "${CMAKE_SOURCE_DIR}/external/donut"
     CACHE PATH "Path to donut framework")
@@ -84,8 +86,15 @@ endif()
 
 add_subdirectory(external/donut)
 add_subdirectory(src)
-add_subdirectory(samples)
-set_property (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT SimpleInferencing)
+
+if (RTXNS_BUILD_SAMPLES AND NOT RTXNS_BUILD_NEURAL_COMPONENTS)
+    message(FATAL_ERROR "RTXNS samples require RTXNS_BUILD_NEURAL_COMPONENTS=ON.")
+endif()
+
+if (RTXNS_BUILD_SAMPLES)
+    add_subdirectory(samples)
+    set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT SimpleInferencing)
+endif()
 
 if (NOT EXISTS "${SHADERMAKE_SLANG_PATH}")
 	message(FATAL_ERROR "SHADERMAKE_SLANG_PATH not set!")
@@ -101,11 +110,12 @@ endif()
 
 file(WRITE "${CMAKE_SOURCE_DIR}/bin/slangc.bat" "${SHADERMAKE_SLANG_PATH} %*")
 
-# Get implot. 
-if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/support/cmake/FetchImplot.cmake")
-    message(FATAL_ERROR "Missing FetchImplot.cmake file")
+if (RTXNS_BUILD_NEURAL_COMPONENTS OR RTXNS_BUILD_SAMPLES)
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/support/cmake/FetchImplot.cmake")
+        message(FATAL_ERROR "Missing FetchImplot.cmake file")
+    endif()
+    include("${CMAKE_CURRENT_SOURCE_DIR}/support/cmake/FetchImplot.cmake")
+    set_target_properties(implot PROPERTIES FOLDER "Third-Party Libraries")
 endif()
-include("${CMAKE_CURRENT_SOURCE_DIR}/support/cmake/FetchImplot.cmake")
-set_target_properties(implot PROPERTIES FOLDER "Third-Party Libraries")
 
     
