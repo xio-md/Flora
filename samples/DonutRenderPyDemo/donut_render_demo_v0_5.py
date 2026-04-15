@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import math
 import sys
+import time
 from pathlib import Path
 
 import numpy as np
@@ -106,20 +107,44 @@ def _camera_pose(position: tuple[float, float, float], target: tuple[float, floa
     return pose
 
 
+def _serialize_plan(plan: dict[str, object]) -> dict[str, object]:
+    return {
+        "mode": str(plan["mode"]),
+        "time": float(plan["time"]),
+        "dirty_categories": list(plan["dirty_categories"]),
+        "dirty_sources": {key: list(value) for key, value in plan["dirty_sources"].items()},
+        "force_render": bool(plan["force_render"]),
+        "backend_rebuilt": bool(plan["backend_rebuilt"]),
+        "environment_applied": bool(plan["environment_applied"]),
+        "operations": [dict(operation) for operation in plan["operations"]],
+        "blockers": list(plan["blockers"]),
+        "cxx_candidates": list(plan["cxx_candidates"]),
+    }
+
+
+def _environment_emission(frame_index: int) -> tuple[float, float, float]:
+    phase = float(frame_index)
+    return (
+        0.08 + 0.03 * math.sin(phase * 0.45),
+        0.10 + 0.04 * math.cos(phase * 0.35),
+        0.14 + 0.05 * math.sin(phase * 0.25 + 0.4),
+    )
+
+
 def main() -> int:
     repo_root = Path(__file__).resolve().parents[2]
     sys.path.insert(0, str(repo_root / "python"))
 
     import DonutRenderPy as dr
 
-    parser = argparse.ArgumentParser(description="Run the Month 1 DonutRenderPy Demo v0.1 multi-frame render.")
+    parser = argparse.ArgumentParser(description="Run the Month 2 DonutRenderPy Demo v0.5 with incremental camera/environment/transform updates.")
     parser.add_argument("--module-dir", type=Path, default=repo_root / "bin" / "windows-x64")
     parser.add_argument("--runtime-dir", type=Path, default=repo_root)
     parser.add_argument("--frames", type=int, default=8)
     parser.add_argument("--width", type=int, default=640)
-    parser.add_argument("--height", type=int, default=480)
-    parser.add_argument("--output-dir", type=Path, default=default_output_dir(repo_root, "donut_render_demo_v0_1"))
-    parser.add_argument("--output-stem", type=str, default="demo_frame")
+    parser.add_argument("--height", type=int, default=384)
+    parser.add_argument("--output-dir", type=Path, default=default_output_dir(repo_root, "donut_render_demo_v0_5"))
+    parser.add_argument("--output-stem", type=str, default="demo_v05_frame")
     parser.add_argument("--manifest", type=Path, default=None)
     args = parser.parse_args()
 
@@ -130,18 +155,7 @@ def main() -> int:
     manifest_path = args.manifest or (output_dir / "manifest.json")
 
     ground_vertices, ground_triangles = _make_plane(7.0)
-    box_vertices, box_triangles, box_normals = _make_box((1.1, 1.1, 1.1))
-    particle_offsets = np.array(
-        [
-            (-0.42, 0.12, 0.25),
-            (-0.18, 0.16, 0.08),
-            (0.14, 0.14, -0.10),
-            (0.36, 0.11, -0.28),
-            (0.05, 0.22, 0.32),
-            (-0.10, 0.27, -0.35),
-        ],
-        dtype=np.float32,
-    )
+    box_vertices, box_triangles, box_normals = _make_box((1.2, 1.2, 1.2))
 
     dr.init(
         context_path=repo_root,
@@ -158,17 +172,10 @@ def main() -> int:
         scene = dr.create_scene()
         scene.init(
             dr.Render(
-                name="month1-demo-v0.1",
+                name="month2-demo-v0.5",
                 spectrum=dr.SRGBSpectrum(),
                 integrator=dr.WavePathIntegrator(log_level=dr.LogLevel.WARNING, max_depth=8),
                 clamp_normal=45.0,
-            )
-        )
-
-        scene.update_environment(
-            dr.Environment(
-                name="sky",
-                emission=dr.ColorTexture((0.12, 0.13, 0.16)),
             )
         )
 
@@ -182,20 +189,20 @@ def main() -> int:
             kd=dr.ColorTexture((0.90, 0.50, 0.18, 1.0)),
             roughness=dr.ColorTexture((0.58,)),
         )
-        particles_surface = dr.MetalSurface(
-            name="particles_surface",
-            kd=dr.ColorTexture((0.88, 0.92, 0.98, 1.0)),
-            roughness=dr.ColorTexture((0.14,)),
-        )
         box_light = dr.Light(
             name="box_light",
             emission=dr.ColorTexture((0.18, 0.08, 0.03)),
             intensity=2.6,
         )
 
+        scene.update_environment(
+            dr.Environment(
+                name="sky",
+                emission=dr.ColorTexture(_environment_emission(0)),
+            )
+        )
         scene.update_surface(ground_surface)
         scene.update_surface(box_surface)
-        scene.update_surface(particles_surface)
         scene.update_emission(box_light)
 
         ground = dr.RigidShape(
@@ -213,19 +220,12 @@ def main() -> int:
             surface=box_surface,
             emission=box_light,
         )
-        particles = dr.ParticlesShape(
-            name="particles",
-            centers=particle_offsets,
-            radii=[0.08] * particle_offsets.shape[0],
-            surface=particles_surface,
-        )
-
         camera = dr.PinholeCamera(
             name="main_camera",
             pose=dr.MatrixTransform(
                 _camera_pose(
-                    position=(2.7, 1.9, 3.0),
-                    target=(0.0, 0.5, 0.0),
+                    position=(2.9, 1.8, 3.1),
+                    target=(0.0, 0.58, 0.0),
                     up=(0.0, 1.0, 0.0),
                 )
             ),
@@ -237,75 +237,98 @@ def main() -> int:
 
         scene.update_shape(ground)
         scene.update_shape(box)
-        scene.update_shape(particles)
         scene.update_camera(camera, denoise=False)
 
         for frame_index in range(frame_count):
-            box_transform = _rotation_y(18.0 + frame_index * 12.0)
-            box_transform[:3, 3] = np.array([0.0, 0.58, 0.0], dtype=np.float32)
-            box.update(transform=dr.MatrixTransform(box_transform))
-            scene.update_shape(box)
+            time_value = float(frame_index)
+            if frame_index > 0:
+                scene.update_environment(
+                    dr.Environment(
+                        name="sky",
+                        emission=dr.ColorTexture(_environment_emission(frame_index)),
+                    )
+                )
 
-            orbit_angle = math.radians(frame_index * 22.5)
-            centers = particle_offsets.copy()
-            centers[:, 0] += 0.24 * math.cos(orbit_angle)
-            centers[:, 2] += 0.24 * math.sin(orbit_angle)
-            centers[:, 1] += 0.05 * np.sin(orbit_angle + np.linspace(0.0, math.pi, centers.shape[0], dtype=np.float32))
-            particles.update(centers, [0.08] * centers.shape[0])
-            scene.update_shape(particles)
+                box_transform = _rotation_y(12.0 + frame_index * 18.0)
+                box_transform[:3, 3] = np.array(
+                    [
+                        0.22 * math.sin(frame_index * 0.35),
+                        0.60 + 0.06 * math.sin(frame_index * 0.5),
+                        0.18 * math.cos(frame_index * 0.35),
+                    ],
+                    dtype=np.float32,
+                )
+                box.update(transform=dr.MatrixTransform(box_transform))
+                scene.update_shape(box)
 
-            camera_angle = math.radians(frame_index * 4.0)
-            camera_pose = _camera_pose(
-                position=(
-                    2.7 + 0.18 * math.cos(camera_angle),
-                    1.9,
-                    3.0 + 0.18 * math.sin(camera_angle),
-                ),
-                target=(0.0, 0.5, 0.0),
-                up=(0.0, 1.0, 0.0),
-            )
-            camera.update(pose=dr.MatrixTransform(camera_pose))
-            scene.update_camera(camera, denoise=False)
+                orbit_angle = math.radians(18.0 + frame_index * 7.5)
+                camera_pose = _camera_pose(
+                    position=(
+                        2.9 + 0.25 * math.cos(orbit_angle),
+                        1.8 + 0.05 * math.sin(frame_index * 0.3),
+                        3.1 + 0.25 * math.sin(orbit_angle),
+                    ),
+                    target=(0.0, 0.60, 0.0),
+                    up=(0.0, 1.0, 0.0),
+                )
+                camera.update(pose=dr.MatrixTransform(camera_pose))
+                scene.update_camera(camera, denoise=False)
 
-            scene.update_scene(time=float(frame_index))
+            preview = _serialize_plan(scene.preview_update_plan(time=time_value))
+
+            started = time.perf_counter()
+            scene.update_scene(time=time_value)
+            update_scene_ms = (time.perf_counter() - started) * 1000.0
+            report = scene.get_update_stats()
+
+            started = time.perf_counter()
             rgba = scene.render_frame(camera)
+            render_frame_ms = (time.perf_counter() - started) * 1000.0
 
             output_path = frame_output_path(output_dir, args.output_stem, frame_index)
             write_rgba_bytes_ppm(output_path, rgba, width, height)
+
+            report_plan = _serialize_plan(report["plan"])
             frame_entries.append(
                 {
                     "frame_index": frame_index,
-                    "time": float(frame_index),
+                    "time": time_value,
                     "path": str(output_path),
+                    "preview_mode": preview["mode"],
+                    "report_mode": str(report["mode"]),
+                    "backend_rebuilt": bool(report["backend_rebuilt"]),
+                    "dirty_categories": list(report_plan["dirty_categories"]),
+                    "operations": [str(operation["name"]) for operation in report_plan["operations"]],
+                    "update_scene_ms": float(update_scene_ms),
+                    "reported_update_scene_ms": float(report["duration_ms"]),
+                    "render_frame_ms": float(render_frame_ms),
+                    "plan": report_plan,
                 }
             )
 
+        incremental_frames = sum(1 for entry in frame_entries if str(entry["report_mode"]).startswith("incremental"))
         write_json(
             manifest_path,
             {
-                "demo": "DonutRenderPy Demo v0.1",
-                "phase": "month1",
+                "demo": "DonutRenderPy Demo v0.5",
+                "phase": "month2",
                 "frame_count": frame_count,
+                "incremental_frame_count": incremental_frames,
+                "full_rebuild_frame_count": frame_count - incremental_frames,
                 "frames": frame_entries,
                 "module": "DonutRenderPy",
                 "notes": [
-                    "Week 4 representative multi-frame render flow built on the frozen Week 2 Python API.",
-                    "Week 6 splits camera-only and environment-only updates away from full rebuilds.",
-                    "Week 7 exposes preview_update_plan()/get_last_update_plan() for explicit Scene update planning.",
-                    "Week 8 moves rigid transform updates onto a native SceneGraph incremental path.",
-                    "This Month 1 demo still animates particle geometry, so its per-frame update flow continues to rebuild the backend.",
+                    "Month 2 demo keeps geometry and material topology stable after bootstrap.",
+                    "Frames after the initial build combine environment, camera, and rigid transform updates.",
+                    "Week 8 native SceneGraph transform updates make the per-frame path Luisa-style and incrementally executable.",
                 ],
                 "output_dir": str(output_dir),
                 "render_flow": [
                     "init",
                     "create_scene",
                     "scene.init(render)",
-                    "update_environment",
-                    "update_surface",
-                    "update_emission",
-                    "update_shape",
-                    "update_camera",
-                    "per_frame: update_shape/update_camera/update_scene/render_frame",
+                    "bootstrap: update_environment/update_surface/update_emission/update_shape/update_camera",
+                    "per_frame: update_environment/update_shape/update_camera/preview_update_plan/update_scene/render_frame",
                 ],
                 "resolution": [width, height],
             },

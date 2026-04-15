@@ -576,6 +576,46 @@ class Scene:
             reason=reason,
         )
 
+    def _dirty_camera_names(self, dirty_sources: dict[str, tuple[str, ...]]) -> tuple[str, ...]:
+        result: list[str] = []
+        for source in dirty_sources.get("camera", ()):
+            if source.startswith("camera:"):
+                result.append(source.split(":", 1)[1])
+        return tuple(result)
+
+    def _dirty_transform_shape_names(self, dirty_sources: dict[str, tuple[str, ...]]) -> tuple[str, ...]:
+        result: list[str] = []
+        for source in dirty_sources.get("transform", ()):
+            if not source.startswith("shape:"):
+                continue
+            payload = source.split(":", 1)[1]
+            if "." not in payload:
+                continue
+            shape_name, suffix = payload.rsplit(".", 1)
+            if suffix == "transform":
+                result.append(shape_name)
+        return tuple(result)
+
+    def _queue_incremental_backend_updates(self, plan: dict[str, object]) -> None:
+        if self._backend is None:
+            raise InvalidStateError("Scene backend is unavailable while queuing incremental updates.")
+
+        dirty_sources = {
+            str(category): tuple(sources)
+            for category, sources in dict(plan.get("dirty_sources", {})).items()
+        }
+        for camera_name in self._dirty_camera_names(dirty_sources):
+            if camera_name not in self._cameras:
+                continue
+            camera, _denoise = self._cameras[camera_name]
+            self._backend.update_camera(_camera_to_backend_desc(camera))
+
+        for shape_name in self._dirty_transform_shape_names(dirty_sources):
+            shape = self._shapes.get(shape_name)
+            if not isinstance(shape, RigidShape):
+                continue
+            self._backend.update_rigid(shape_name, _resolve_transform_matrix(shape.transform))
+
     def _build_update_plan(self, *, time_value: float) -> dict[str, object]:
         dirty_categories = tuple(sorted(self._dirty_flags))
         dirty_sources = self._dirty_source_snapshot()
@@ -657,41 +697,22 @@ class Scene:
                 cxx_candidates=tuple(cxx_candidates),
             ).to_dict()
 
-        rebuild_categories = tuple(category for category in dirty_categories if category not in {"camera", "environment"})
+        rebuild_categories = tuple(category for category in dirty_categories if category not in {"camera", "environment", "transform"})
         if rebuild_categories:
             mode = "full_rebuild"
             force_render = True
             backend_rebuilt = True
 
             if "camera" in dirty_categories:
-                add_candidate("update_camera")
                 operations.append(
                     self._make_operation(
-                        name="camera_bind_deferred",
+                        name="apply_camera",
                         scope="camera",
-                        execution_layer="render_path",
-                        status="deferred_to_render_frame",
-                        current_path="Scene.render_frame() -> GenesisStyleRenderer.render_camera_rgba()",
-                        next_target="native Scene.update_camera(...)",
-                        reason="Camera state is still bound through render_frame() instead of being pushed during update_scene().",
-                    )
-                )
-
-            if "environment" in dirty_categories:
-                add_candidate("update_environment")
-
-            if "transform" in rebuild_categories:
-                add_candidate("update_shape_transform")
-                blockers.append("transform dirty-state still falls back to full rebuild because native transform handles are not exposed.")
-                operations.append(
-                    self._make_operation(
-                        name="transform_incremental_candidate",
-                        scope="shape.transform",
-                        execution_layer="cxx_boundary",
-                        status="planned_native",
-                        current_path="full Scene rebuild via Scene._rebuild_backend()",
-                        next_target="native rigid transform update without load_scene()",
-                        reason="GenesisStyleRenderer.update_rigid(...) exists in Python, but the native scene still reloads the full GLB snapshot.",
+                        execution_layer="backend_wrapper",
+                        status="current",
+                        current_path="Scene._queue_incremental_backend_updates() -> GenesisStyleRenderer.update_camera()",
+                        next_target="HeadlessPbrScene.set_camera(...)",
+                        reason="Camera state can now be pushed through the backend without forcing a Scene rebuild.",
                     )
                 )
 
@@ -760,11 +781,13 @@ class Scene:
                 cxx_candidates=tuple(cxx_candidates),
             ).to_dict()
 
-        mode = "incremental_camera_environment"
+        if "transform" in dirty_categories:
+            mode = "incremental_camera_transform_environment"
+        else:
+            mode = "incremental_camera_environment"
 
         if "environment" in dirty_categories:
             environment_applied = True
-            add_candidate("update_environment")
             operations.append(
                 self._make_operation(
                     name="apply_environment",
@@ -772,22 +795,33 @@ class Scene:
                     execution_layer="backend_wrapper",
                     status="current",
                     current_path="Scene._apply_environment() -> GenesisStyleRenderer.set_ambient()/set_default_light()",
-                    next_target="native Scene.update_environment(...)",
-                    reason="Ambient lighting can already be re-applied without rebuilding geometry.",
+                    next_target="HeadlessPbrScene.set_ambient()/set_default_light()",
+                    reason="Ambient lighting already updates the live backend scene without rebuilding geometry.",
                 )
             )
 
         if "camera" in dirty_categories:
-            add_candidate("update_camera")
             operations.append(
                 self._make_operation(
-                    name="camera_bind_deferred",
+                    name="apply_camera",
                     scope="camera",
-                    execution_layer="render_path",
-                    status="deferred_to_render_frame",
-                    current_path="Scene.render_frame() -> GenesisStyleRenderer.render_camera_rgba()",
-                    next_target="native Scene.update_camera(...)",
-                    reason="Camera changes reuse the existing backend scene, but the actual camera bind still happens during render_frame().",
+                    execution_layer="backend_wrapper",
+                    status="current",
+                    current_path="Scene._queue_incremental_backend_updates() -> GenesisStyleRenderer.update_camera()",
+                    next_target="HeadlessPbrScene.set_camera(...)",
+                    reason="Camera-only updates now stay on the live backend path instead of requiring a rebuild.",
+                )
+            )
+        if "transform" in dirty_categories:
+            operations.append(
+                self._make_operation(
+                    name="apply_rigid_transforms",
+                    scope="shape.transform",
+                    execution_layer="backend_wrapper",
+                    status="current",
+                    current_path="Scene._queue_incremental_backend_updates() -> GenesisStyleRenderer.update_rigid()",
+                    next_target="HeadlessPbrScene.update_node_transform(...)",
+                    reason="Rigid shape transforms now update the existing SceneGraph nodes without reloading GLB geometry.",
                 )
             )
 
@@ -799,7 +833,7 @@ class Scene:
                 status="current",
                 current_path="GenesisStyleRenderer.update_scene(force_render=False)",
                 next_target="native Scene.update_scene(...)",
-                reason="Camera/environment changes can reuse the existing backend scene without a full reload.",
+                reason="Camera, transform, and environment changes can reuse the existing backend scene without a full reload.",
             )
         )
         return _SceneUpdatePlan(
@@ -823,6 +857,8 @@ class Scene:
 
         if self._backend is None:
             raise InvalidStateError("Scene backend is unavailable after executing the update plan.")
+        if not bool(plan.get("backend_rebuilt", False)):
+            self._queue_incremental_backend_updates(plan)
         self._backend.update_scene(
             force_render=bool(plan.get("force_render", False)),
             time=self._time,

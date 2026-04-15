@@ -80,6 +80,7 @@ class GlbSceneBuilder:
         normals: Optional[np.ndarray],
         uvs: Optional[np.ndarray],
         material_index: int,
+        node_matrix: Optional[np.ndarray] = None,
     ) -> None:
         if vertices.size == 0 or triangles.size == 0:
             return
@@ -116,12 +117,18 @@ class GlbSceneBuilder:
                 "primitives": [primitive],
             }
         )
-        self._nodes.append(
-            {
-                "name": name,
-                "mesh": mesh_index,
-            }
-        )
+        node: dict = {
+            "name": name,
+            "mesh": mesh_index,
+        }
+        if node_matrix is not None:
+            matrix = np.ascontiguousarray(node_matrix, dtype=np.float32)
+            if matrix.shape != (4, 4):
+                raise ValueError("node_matrix must have shape (4, 4).")
+            # glTF stores matrices in column-major order.
+            node["matrix"] = matrix.T.reshape(-1).astype(float).tolist()
+
+        self._nodes.append(node)
 
     def build(self) -> bytes:
         if not self._nodes:

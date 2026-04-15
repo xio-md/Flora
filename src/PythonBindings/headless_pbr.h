@@ -42,6 +42,9 @@ namespace rtxns::python
             const std::array<float, 3>& direction,
             const std::array<float, 3>& color,
             float irradiance);
+        void update_node_transform(
+            const std::string& name,
+            const std::vector<float>& matrix_values);
 
         [[nodiscard]] std::vector<uint8_t> render_frame();
         [[nodiscard]] uint32_t width() const noexcept;

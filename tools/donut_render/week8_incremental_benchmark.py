@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 import numpy as np
@@ -54,76 +55,28 @@ def _serialize_plan(plan: dict[str, object]) -> dict[str, object]:
 
 def _capture_step(scene, camera, *, step: str, time_value: float) -> dict[str, object]:
     preview = _serialize_plan(scene.preview_update_plan(time=time_value))
+
+    started = time.perf_counter()
     scene.update_scene(time=time_value)
+    update_scene_ms = (time.perf_counter() - started) * 1000.0
+
     report = scene.get_update_stats()
-    executed = _serialize_plan(scene.get_last_update_plan())
+
+    started = time.perf_counter()
     rgba = scene.render_frame(camera)
+    render_frame_ms = (time.perf_counter() - started) * 1000.0
+
     return {
         "step": step,
         "preview": preview,
-        "executed": executed,
         "report_mode": str(report["mode"]),
         "report_plan": _serialize_plan(report["plan"]),
-        "duration_ms": float(report["duration_ms"]),
+        "update_scene_ms": float(update_scene_ms),
+        "reported_update_scene_ms": float(report["duration_ms"]),
+        "render_frame_ms": float(render_frame_ms),
+        "total_ms": float(update_scene_ms + render_frame_ms),
         "rgba_bytes": len(rgba),
     }
-
-
-def _operation_names(plan: dict[str, object]) -> set[str]:
-    return {str(operation["name"]) for operation in plan["operations"]}
-
-
-def _assert_plan(
-    entry: dict[str, object],
-    *,
-    expected_mode: str,
-    expected_categories: set[str],
-    required_operations: set[str],
-    expected_candidates: set[str],
-) -> None:
-    preview = entry["preview"]
-    executed = entry["executed"]
-    report_plan = entry["report_plan"]
-
-    if preview["mode"] != expected_mode:
-        raise AssertionError(f"{entry['step']} preview expected mode {expected_mode}, got {preview['mode']}.")
-    if executed["mode"] != expected_mode:
-        raise AssertionError(f"{entry['step']} executed expected mode {expected_mode}, got {executed['mode']}.")
-    if entry["report_mode"] != expected_mode:
-        raise AssertionError(f"{entry['step']} report expected mode {expected_mode}, got {entry['report_mode']}.")
-
-    if set(preview["dirty_categories"]) != expected_categories:
-        raise AssertionError(
-            f"{entry['step']} preview expected categories {sorted(expected_categories)}, "
-            f"got {sorted(preview['dirty_categories'])}."
-        )
-    if set(executed["dirty_categories"]) != expected_categories:
-        raise AssertionError(
-            f"{entry['step']} executed expected categories {sorted(expected_categories)}, "
-            f"got {sorted(executed['dirty_categories'])}."
-        )
-
-    if not required_operations.issubset(_operation_names(preview)):
-        raise AssertionError(
-            f"{entry['step']} preview missing operations {sorted(required_operations - _operation_names(preview))}."
-        )
-    if not required_operations.issubset(_operation_names(executed)):
-        raise AssertionError(
-            f"{entry['step']} executed missing operations {sorted(required_operations - _operation_names(executed))}."
-        )
-    if not required_operations.issubset(_operation_names(report_plan)):
-        raise AssertionError(
-            f"{entry['step']} report missing operations {sorted(required_operations - _operation_names(report_plan))}."
-        )
-
-    if set(executed["cxx_candidates"]) != expected_candidates:
-        raise AssertionError(
-            f"{entry['step']} expected C++ candidates {sorted(expected_candidates)}, "
-            f"got {sorted(executed['cxx_candidates'])}."
-        )
-
-    if int(entry["rgba_bytes"]) != 64 * 64 * 4:
-        raise AssertionError(f"{entry['step']} expected 16384 RGBA bytes, got {entry['rgba_bytes']}.")
 
 
 def main() -> int:
@@ -132,13 +85,13 @@ def main() -> int:
 
     import DonutRenderPy as dr
 
-    parser = argparse.ArgumentParser(description="Validate Week 7 scene update planning and API alignment hooks.")
+    parser = argparse.ArgumentParser(description="Benchmark Week 8 native incremental update paths.")
     parser.add_argument("--module-dir", type=Path, default=repo_root / "bin" / "windows-x64")
     parser.add_argument("--runtime-dir", type=Path, default=repo_root)
     parser.add_argument(
         "--output",
         type=Path,
-        default=repo_root / ".temp" / "week7_scene_api_plan.json",
+        default=repo_root / ".temp" / "week8_incremental_benchmark.json",
     )
     args = parser.parse_args()
 
@@ -159,7 +112,7 @@ def main() -> int:
         scene = dr.create_scene()
         scene.init(
             dr.Render(
-                name="week7-plan-smoke",
+                name="week8-benchmark",
                 spectrum=dr.SRGBSpectrum(),
                 integrator=dr.WavePathIntegrator(log_level=dr.LogLevel.WARNING),
             )
@@ -225,67 +178,32 @@ def main() -> int:
         scene.update_surface(surface)
         results.append(_capture_step(scene, camera, step="surface_only", time_value=4.0))
 
-        shape = dr.RigidShape(
-            name="quad",
-            vertices=_quad_vertices(1.25),
-            triangles=_quad_triangles(),
-            transform=dr.MatrixTransform(transform),
-            surface="mat",
-        )
-        scene.update_shape(shape)
-        results.append(_capture_step(scene, camera, step="geometry_only", time_value=5.0))
-
         expected = {
-            "initial_build": {
-                "mode": "full_rebuild",
-                "categories": {"camera", "environment", "geometry", "surface"},
-                "operations": {"bootstrap_backend", "advance_scene"},
-                "cxx_candidates": set(),
-            },
-            "camera_only": {
-                "mode": "incremental_camera_environment",
-                "categories": {"camera"},
-                "operations": {"apply_camera", "advance_scene"},
-                "cxx_candidates": set(),
-            },
-            "environment_only": {
-                "mode": "incremental_camera_environment",
-                "categories": {"environment"},
-                "operations": {"apply_environment", "advance_scene"},
-                "cxx_candidates": set(),
-            },
-            "transform_only": {
-                "mode": "incremental_camera_transform_environment",
-                "categories": {"transform"},
-                "operations": {"apply_rigid_transforms", "advance_scene"},
-                "cxx_candidates": set(),
-            },
-            "surface_only": {
-                "mode": "full_rebuild",
-                "categories": {"surface"},
-                "operations": {"surface_incremental_candidate", "rebuild_backend", "advance_scene"},
-                "cxx_candidates": {"update_surface"},
-            },
-            "geometry_only": {
-                "mode": "full_rebuild",
-                "categories": {"geometry"},
-                "operations": {"geometry_incremental_candidate", "rebuild_backend", "advance_scene"},
-                "cxx_candidates": {"update_shape"},
-            },
+            "initial_build": ("full_rebuild", {"camera", "environment", "geometry", "surface"}, True),
+            "camera_only": ("incremental_camera_environment", {"camera"}, False),
+            "environment_only": ("incremental_camera_environment", {"environment"}, False),
+            "transform_only": ("incremental_camera_transform_environment", {"transform"}, False),
+            "surface_only": ("full_rebuild", {"surface"}, True),
         }
 
         for entry in results:
-            spec = expected[entry["step"]]
-            _assert_plan(
-                entry,
-                expected_mode=spec["mode"],
-                expected_categories=spec["categories"],
-                required_operations=spec["operations"],
-                expected_candidates=spec["cxx_candidates"],
-            )
+            expected_mode, expected_categories, expected_rebuild = expected[entry["step"]]
+            plan = entry["report_plan"]
+            if entry["report_mode"] != expected_mode:
+                raise AssertionError(f"{entry['step']} expected mode {expected_mode}, got {entry['report_mode']}.")
+            if set(plan["dirty_categories"]) != expected_categories:
+                raise AssertionError(
+                    f"{entry['step']} expected categories {sorted(expected_categories)}, got {sorted(plan['dirty_categories'])}."
+                )
+            if bool(plan["backend_rebuilt"]) != expected_rebuild:
+                raise AssertionError(
+                    f"{entry['step']} expected backend_rebuilt={expected_rebuild}, got {plan['backend_rebuilt']}."
+                )
+            if int(entry["rgba_bytes"]) != 64 * 64 * 4:
+                raise AssertionError(f"{entry['step']} expected 16384 RGBA bytes, got {entry['rgba_bytes']}.")
 
         output = {
-            "validation": "week7_scene_api_plan",
+            "benchmark": "week8_incremental_paths",
             "resolution": [64, 64],
             "results": results,
         }

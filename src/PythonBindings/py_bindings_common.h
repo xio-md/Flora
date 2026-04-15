@@ -40,6 +40,10 @@ inline void bind_rtxns_headless_pbr_module(py::module_ &m)
             py::arg("direction"),
             py::arg("color") = std::array<float, 3>{1.0f, 1.0f, 1.0f},
             py::arg("irradiance") = 2.0f)
+        .def("update_node_transform",
+            &rtxns::python::HeadlessPbrScene::update_node_transform,
+            py::arg("name"),
+            py::arg("matrix_values"))
         .def("render_frame",
             [](rtxns::python::HeadlessPbrScene &self)
             {

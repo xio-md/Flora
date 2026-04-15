@@ -92,6 +92,10 @@ def _coerce_transform(matrix: Any) -> np.ndarray:
     return np.ascontiguousarray(array)
 
 
+def _transform_to_gltf_node_matrix(matrix: Any) -> np.ndarray:
+    return _coerce_transform(matrix)
+
+
 def _normalize_vectors(vectors: np.ndarray) -> np.ndarray:
     lengths = np.linalg.norm(vectors, axis=1, keepdims=True)
     valid = lengths[:, 0] > 1.0e-12
@@ -422,7 +426,11 @@ class GenesisStyleRenderer:
         self._shapes: dict[str, _ShapeRecord] = {}
         self._cameras: dict[str, CameraDesc] = {}
         self._scene_dirty = True
+        self._scene_loaded = False
+        self._camera_dirty = False
         self.camera_updated = False
+        self._last_camera_uid: Optional[str] = None
+        self._pending_rigid_updates: dict[str, np.ndarray] = {}
         self._t = -1
         self._destroyed = False
 
@@ -508,7 +516,10 @@ class GenesisStyleRenderer:
         if record.kind != "rigid":
             raise ValueError(f"Shape '{shape_name}' is not rigid.")
         record.transform = _coerce_transform(matrix)
-        self._scene_dirty = True
+        if self._scene_loaded and not self._scene_dirty:
+            self._pending_rigid_updates[shape_name] = np.ascontiguousarray(record.transform)
+        else:
+            self._scene_dirty = True
 
     def update_rigid_batch(self, name: str, matrices: Any) -> None:
         for batch_index in self.rendered_envs_idx:
@@ -592,6 +603,8 @@ class GenesisStyleRenderer:
     def add_camera(self, camera: Any) -> CameraDesc:
         desc = _coerce_camera_desc(camera)
         self._cameras[desc.uid] = desc
+        self._last_camera_uid = desc.uid
+        self._camera_dirty = True
         self.camera_updated = True
         return desc
 
@@ -623,6 +636,7 @@ class GenesisStyleRenderer:
 
     def update_scene(self, force_render: bool = False, time: Optional[float] = None) -> None:
         if not force_render and not self._scene_dirty:
+            self._apply_pending_incremental_updates()
             if time is not None:
                 self._t = time
             self.camera_updated = False
@@ -656,6 +670,7 @@ class GenesisStyleRenderer:
                 normals=normals,
                 uvs=uvs,
                 material_index=material_indices[material_name],
+                node_matrix=_transform_to_gltf_node_matrix(record.transform) if record.kind == "rigid" else None,
             )
             renderable_count += 1
 
@@ -664,31 +679,28 @@ class GenesisStyleRenderer:
 
         self._scene_path.write_bytes(builder.build())
         self._scene.load_scene(str(self._scene_path))
+        self._scene_loaded = True
+        self._pending_rigid_updates.clear()
         self._scene.set_ambient(self._ambient_top, self._ambient_bottom)
         self._scene.set_default_light(
             self._default_light_direction,
             self._default_light_color,
             self._default_light_irradiance,
         )
+        self._apply_latest_camera()
 
         self._scene_dirty = False
+        self._camera_dirty = False
         self.camera_updated = False
         self._t = self._t + 1 if time is None else time
 
     def render_camera(self, camera: Any, force_render: bool = False, time: Optional[float] = None) -> np.ndarray:
         desc = _coerce_camera_desc(camera)
         self._cameras[desc.uid] = desc
+        self._last_camera_uid = desc.uid
         self.update_scene(force_render=force_render, time=time)
-        self._scene.set_camera(
-            desc.pos,
-            desc.lookat,
-            desc.up,
-            float(desc.fov),
-            int(desc.res[0]),
-            int(desc.res[1]),
-            float(desc.near),
-            float(desc.far),
-        )
+        self._apply_camera_desc(desc)
+        self._camera_dirty = False
         rgba = self._scene.render_frame()
         image = np.frombuffer(rgba, dtype=np.uint8).reshape(desc.res[1], desc.res[0], 4)
         return np.ascontiguousarray(image[:, :, :3])
@@ -699,17 +711,10 @@ class GenesisStyleRenderer:
     def render_camera_rgba(self, camera: Any, force_render: bool = False, time: Optional[float] = None) -> np.ndarray:
         desc = _coerce_camera_desc(camera)
         self._cameras[desc.uid] = desc
+        self._last_camera_uid = desc.uid
         self.update_scene(force_render=force_render, time=time)
-        self._scene.set_camera(
-            desc.pos,
-            desc.lookat,
-            desc.up,
-            float(desc.fov),
-            int(desc.res[0]),
-            int(desc.res[1]),
-            float(desc.near),
-            float(desc.far),
-        )
+        self._apply_camera_desc(desc)
+        self._camera_dirty = False
         rgba = self._scene.render_frame()
         return np.frombuffer(rgba, dtype=np.uint8).reshape(desc.res[1], desc.res[0], 4).copy()
 
@@ -719,8 +724,12 @@ class GenesisStyleRenderer:
         self._destroyed = True
 
         self._cameras.clear()
+        self._camera_dirty = False
+        self._last_camera_uid = None
+        self._pending_rigid_updates.clear()
         self._shapes.clear()
         self._surfaces.clear()
+        self._scene_loaded = False
         self._scene = None
 
         shutil.rmtree(self._temp_dir, ignore_errors=True)
@@ -746,16 +755,41 @@ class GenesisStyleRenderer:
                 np.empty((0, 2), dtype=np.float32),
             )
 
-        if record.kind == "rigid":
-            vertices = _transform_vertices(vertices, record.transform)
-            normals = _transform_normals(normals, record.transform)
-
         return (
             np.ascontiguousarray(vertices, dtype=np.float32),
             np.ascontiguousarray(triangles, dtype=np.uint32),
             np.ascontiguousarray(normals, dtype=np.float32),
             np.ascontiguousarray(uvs, dtype=np.float32),
         )
+
+    def _apply_camera_desc(self, desc: CameraDesc) -> None:
+        self._scene.set_camera(
+            desc.pos,
+            desc.lookat,
+            desc.up,
+            float(desc.fov),
+            int(desc.res[0]),
+            int(desc.res[1]),
+            float(desc.near),
+            float(desc.far),
+        )
+
+    def _apply_latest_camera(self) -> None:
+        if self._last_camera_uid is None:
+            return
+        desc = self._cameras.get(self._last_camera_uid)
+        if desc is None:
+            return
+        self._apply_camera_desc(desc)
+
+    def _apply_pending_incremental_updates(self) -> None:
+        if self._pending_rigid_updates:
+            for shape_name, matrix in self._pending_rigid_updates.items():
+                self._scene.update_node_transform(shape_name, np.asarray(matrix, dtype=np.float32).reshape(-1).tolist())
+            self._pending_rigid_updates.clear()
+        if self._camera_dirty:
+            self._apply_latest_camera()
+            self._camera_dirty = False
 
     def _particles_to_mesh(self, record: _ShapeRecord) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         centers = record.particle_centers

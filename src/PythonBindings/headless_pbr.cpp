@@ -323,6 +323,63 @@ namespace rtxns::python
             }
         }
 
+        void update_node_transform(const std::string& name, const std::vector<float>& matrix_values)
+        {
+            if (matrix_values.size() != 16)
+            {
+                throw std::runtime_error("update_node_transform expects a 4x4 matrix flattened into 16 floats.");
+            }
+            if (!m_scene || !m_scene->GetSceneGraph())
+            {
+                throw std::runtime_error("No scene has been loaded.");
+            }
+
+            std::shared_ptr<donut::engine::SceneGraphNode> node;
+            for (const auto& instance : m_scene->GetSceneGraph()->GetMeshInstances())
+            {
+                if (!instance)
+                {
+                    continue;
+                }
+                if (instance->GetName() == name)
+                {
+                    node = instance->GetNodeSharedPtr();
+                    break;
+                }
+                auto candidate = instance->GetNodeSharedPtr();
+                if (candidate && candidate->GetName() == name)
+                {
+                    node = std::move(candidate);
+                    break;
+                }
+            }
+
+            if (!node)
+            {
+                node = m_scene->GetSceneGraph()->FindNode(std::filesystem::path("/") / name);
+            }
+            if (!node)
+            {
+                throw std::runtime_error("Scene node not found: " + name);
+            }
+
+            dm::float4x4 donut_matrix{};
+            for (int row = 0; row < 4; ++row)
+            {
+                for (int column = 0; column < 4; ++column)
+                {
+                    donut_matrix[row][column] = matrix_values[column * 4 + row];
+                }
+            }
+
+            dm::double3 translation;
+            dm::double3 scaling;
+            dm::dquat rotation;
+            auto affine = dm::homogeneousToAffine(donut_matrix);
+            dm::decomposeAffine(dm::daffine3(affine), &translation, &rotation, &scaling);
+            node->SetTransform(&translation, &rotation, &scaling);
+        }
+
         [[nodiscard]] std::vector<uint8_t> render_frame()
         {
             if (!m_scene)
@@ -554,6 +611,13 @@ namespace rtxns::python
         float irradiance)
     {
         m_impl->set_default_light(direction, color, irradiance);
+    }
+
+    void HeadlessPbrScene::update_node_transform(
+        const std::string& name,
+        const std::vector<float>& matrix_values)
+    {
+        m_impl->update_node_transform(name, matrix_values);
     }
 
     std::vector<uint8_t> HeadlessPbrScene::render_frame()

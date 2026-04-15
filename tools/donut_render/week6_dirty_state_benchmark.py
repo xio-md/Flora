@@ -166,7 +166,7 @@ def main() -> int:
             "initial_build": ("full_rebuild", {"camera", "environment", "geometry", "surface"}),
             "camera_only": ("incremental_camera_environment", {"camera"}),
             "environment_only": ("incremental_camera_environment", {"environment"}),
-            "transform_only": ("full_rebuild", {"transform"}),
+            "transform_only": ("incremental_camera_transform_environment", {"transform"}),
             "surface_only": ("full_rebuild", {"surface"}),
             "geometry_only": ("full_rebuild", {"geometry"}),
         }
