@@ -9,6 +9,7 @@ build/*
 external/slang/windows-x64/release/slang-stdlib.bin
 /external/dx12-agility-sdk
 /external/nvapi
+/docs
 
 
 # Temp files from running Python sample.
