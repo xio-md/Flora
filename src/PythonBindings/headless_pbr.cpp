@@ -93,7 +93,7 @@ namespace rtxns::python
         {
             if (options.backend != "vulkan")
             {
-                throw std::runtime_error("RtxRenderPy MVP-1 only supports backend='vulkan'.");
+                throw std::runtime_error("The RTXNS Donut Python backend currently only supports backend='vulkan'.");
             }
 
             DeviceManager* raw_manager = DeviceManager::Create(nvrhi::GraphicsAPI::VULKAN);
@@ -457,7 +457,7 @@ namespace rtxns::python
             color_desc.width = width;
             color_desc.height = height;
             color_desc.dimension = nvrhi::TextureDimension::Texture2D;
-            color_desc.debugName = "RtxRenderPy/Color";
+            color_desc.debugName = "DonutRenderPy/Color";
             color_desc.format = nvrhi::Format::SRGBA8_UNORM;
             color_desc.isRenderTarget = true;
             color_desc.initialState = nvrhi::ResourceStates::RenderTarget;
@@ -467,7 +467,7 @@ namespace rtxns::python
             depth_desc.width = width;
             depth_desc.height = height;
             depth_desc.dimension = nvrhi::TextureDimension::Texture2D;
-            depth_desc.debugName = "RtxRenderPy/Depth";
+            depth_desc.debugName = "DonutRenderPy/Depth";
             depth_desc.format = nvrhi::Format::D32;
             depth_desc.isRenderTarget = true;
             depth_desc.initialState = nvrhi::ResourceStates::DepthWrite;
@@ -591,7 +591,7 @@ namespace rtxns::python
         auto context = g_context;
         if (!context)
         {
-            throw std::runtime_error("RtxRenderPy is not initialized. Call init(...) first.");
+            throw std::runtime_error("The RTXNS Donut Python backend is not initialized. Call init(...) first.");
         }
 
         return std::make_shared<HeadlessPbrScene>(std::move(context));

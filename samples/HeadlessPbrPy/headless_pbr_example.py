@@ -4,31 +4,36 @@ import argparse
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-def _write_ppm(path: Path, rgba: bytes, width: int, height: int) -> None:
-    rgb = bytearray(width * height * 3)
-    for src, dst in zip(range(0, len(rgba), 4), range(0, len(rgb), 3)):
-        rgb[dst:dst + 3] = rgba[src:src + 3]
+from python_demo_common import default_output_dir, frame_output_path, write_rgba_bytes_ppm
 
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("wb") as f:
-        f.write(f"P6\n{width} {height}\n255\n".encode("ascii"))
-        f.write(rgb)
+
+def _import_native_renderer(module_dir: Path):
+    sys.path.insert(0, str(module_dir))
+    try:
+        import DonutRenderPyNative as rr
+        return rr
+    except ImportError:
+        import RtxRenderPy as rr
+        return rr
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Render one offscreen PBR frame with RtxRenderPy.")
-    parser.add_argument("--module-dir", type=Path, default=Path(__file__).resolve().parents[2] / "bin" / "windows-x64")
+    repo_root = Path(__file__).resolve().parents[2]
+
+    parser = argparse.ArgumentParser(description="Render one offscreen PBR frame with the native Donut renderer module.")
+    parser.add_argument("--module-dir", type=Path, default=repo_root / "bin" / "windows-x64")
     parser.add_argument("--scene", type=Path,
-                        default=Path(__file__).resolve().parents[2] / "external" / "donut" / "thirdparty" / "cgltf" / "fuzz" / "data" / "Box.glb")
-    parser.add_argument("--output", type=Path, default=Path(__file__).resolve().with_name("headless_pbr_box.ppm"))
+                        default=repo_root / "external" / "donut" / "thirdparty" / "cgltf" / "fuzz" / "data" / "Box.glb")
+    parser.add_argument("--output", type=Path, default=None, help="Legacy direct output path. Overrides --output-dir/output-stem.")
+    parser.add_argument("--output-dir", type=Path, default=default_output_dir(repo_root, "headless_pbr_py"))
+    parser.add_argument("--output-stem", type=str, default="headless_pbr_frame")
     parser.add_argument("--width", type=int, default=512)
     parser.add_argument("--height", type=int, default=512)
     args = parser.parse_args()
 
-    sys.path.insert(0, str(args.module_dir))
-
-    import RtxRenderPy as rr
+    rr = _import_native_renderer(args.module_dir)
 
     rr.init()
     try:
@@ -45,11 +50,12 @@ def main() -> int:
             100.0,
         )
         rgba = scene.render_frame()
-        _write_ppm(args.output, rgba, scene.width, scene.height)
+        output_path = args.output or frame_output_path(args.output_dir, args.output_stem, 0)
+        write_rgba_bytes_ppm(output_path, rgba, scene.width, scene.height)
     finally:
         rr.destroy()
 
-    print(args.output)
+    print(output_path)
     return 0
 
 

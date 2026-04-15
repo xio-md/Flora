@@ -19,4 +19,6 @@ __pycache__/
 samples/SlangpyTraining/trained_shaders.cfg
 samples/SlangpyTraining/weights.json
 samples/HeadlessPbrPy/*.ppm
+samples/GenesisStylePy/*.ppm
+samples/GenesisStylePy/*.png
 

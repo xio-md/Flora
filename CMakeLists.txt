@@ -96,21 +96,21 @@ if (RTXNS_BUILD_SAMPLES)
     set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT SimpleInferencing)
 endif()
 
-if (NOT EXISTS "${SHADERMAKE_SLANG_PATH}")
-	message(FATAL_ERROR "SHADERMAKE_SLANG_PATH not set!")
-endif()
-
-# Copy the DXC DLLs next to Slang because the -dxc-path option doesn't seem to work.
-if (WIN32)
-	cmake_path(REMOVE_FILENAME SHADERMAKE_SLANG_PATH OUTPUT_VARIABLE SLANG_DIRECTORY)
-	cmake_path(REPLACE_FILENAME SHADERMAKE_DXC_PATH "dxcompiler.dll" OUTPUT_VARIABLE DXCOMPILER_DLL)
-	cmake_path(REPLACE_FILENAME SHADERMAKE_DXC_PATH "dxil.dll" OUTPUT_VARIABLE DXIL_DLL)
-	file(COPY "${DXCOMPILER_DLL}" "${DXIL_DLL}" DESTINATION "${SLANG_DIRECTORY}/")
-endif()
-
-file(WRITE "${CMAKE_SOURCE_DIR}/bin/slangc.bat" "${SHADERMAKE_SLANG_PATH} %*")
-
 if (RTXNS_BUILD_NEURAL_COMPONENTS OR RTXNS_BUILD_SAMPLES)
+    if (NOT EXISTS "${SHADERMAKE_SLANG_PATH}")
+        message(FATAL_ERROR "SHADERMAKE_SLANG_PATH not set!")
+    endif()
+
+    # Copy the DXC DLLs next to Slang because the -dxc-path option doesn't seem to work.
+    if (WIN32)
+        cmake_path(REMOVE_FILENAME SHADERMAKE_SLANG_PATH OUTPUT_VARIABLE SLANG_DIRECTORY)
+        cmake_path(REPLACE_FILENAME SHADERMAKE_DXC_PATH "dxcompiler.dll" OUTPUT_VARIABLE DXCOMPILER_DLL)
+        cmake_path(REPLACE_FILENAME SHADERMAKE_DXC_PATH "dxil.dll" OUTPUT_VARIABLE DXIL_DLL)
+        file(COPY "${DXCOMPILER_DLL}" "${DXIL_DLL}" DESTINATION "${SLANG_DIRECTORY}/")
+    endif()
+
+    file(WRITE "${CMAKE_SOURCE_DIR}/bin/slangc.bat" "${SHADERMAKE_SLANG_PATH} %*")
+
     if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/support/cmake/FetchImplot.cmake")
         message(FATAL_ERROR "Missing FetchImplot.cmake file")
     endif()
