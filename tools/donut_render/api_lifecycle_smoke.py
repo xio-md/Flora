@@ -42,7 +42,7 @@ def main() -> int:
 
     scene = dr.create_scene()
     render = dr.Render(
-        name="week2-smoke",
+        name="api-lifecycle-smoke",
         spectrum=dr.SRGBSpectrum(),
         integrator=dr.WavePathIntegrator(log_level=dr.LogLevel.INFO),
         clamp_normal=45.0,

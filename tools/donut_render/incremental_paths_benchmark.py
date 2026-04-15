@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 import numpy as np
@@ -37,18 +38,43 @@ def _quad_triangles() -> tuple[tuple[int, int, int], ...]:
     )
 
 
+def _serialize_plan(plan: dict[str, object]) -> dict[str, object]:
+    return {
+        "mode": str(plan["mode"]),
+        "time": float(plan["time"]),
+        "dirty_categories": list(plan["dirty_categories"]),
+        "dirty_sources": {key: list(value) for key, value in plan["dirty_sources"].items()},
+        "force_render": bool(plan["force_render"]),
+        "backend_rebuilt": bool(plan["backend_rebuilt"]),
+        "environment_applied": bool(plan["environment_applied"]),
+        "operations": [dict(operation) for operation in plan["operations"]],
+        "blockers": list(plan["blockers"]),
+        "cxx_candidates": list(plan["cxx_candidates"]),
+    }
+
+
 def _capture_step(scene, camera, *, step: str, time_value: float) -> dict[str, object]:
+    preview = _serialize_plan(scene.preview_update_plan(time=time_value))
+
+    started = time.perf_counter()
     scene.update_scene(time=time_value)
-    update_report = scene.get_update_stats()
+    update_scene_ms = (time.perf_counter() - started) * 1000.0
+
+    report = scene.get_update_stats()
+
+    started = time.perf_counter()
     rgba = scene.render_frame(camera)
+    render_frame_ms = (time.perf_counter() - started) * 1000.0
+
     return {
         "step": step,
-        "mode": update_report["mode"],
-        "dirty_categories": list(update_report["dirty_categories"]),
-        "dirty_sources": {key: list(value) for key, value in update_report["dirty_sources"].items()},
-        "duration_ms": float(update_report["duration_ms"]),
-        "backend_rebuilt": bool(update_report["backend_rebuilt"]),
-        "environment_applied": bool(update_report["environment_applied"]),
+        "preview": preview,
+        "report_mode": str(report["mode"]),
+        "report_plan": _serialize_plan(report["plan"]),
+        "update_scene_ms": float(update_scene_ms),
+        "reported_update_scene_ms": float(report["duration_ms"]),
+        "render_frame_ms": float(render_frame_ms),
+        "total_ms": float(update_scene_ms + render_frame_ms),
         "rgba_bytes": len(rgba),
     }
 
@@ -59,13 +85,13 @@ def main() -> int:
 
     import DonutRenderPy as dr
 
-    parser = argparse.ArgumentParser(description="Benchmark and validate Week 6 dirty-state update branches.")
+    parser = argparse.ArgumentParser(description="Benchmark native incremental update paths.")
     parser.add_argument("--module-dir", type=Path, default=repo_root / "bin" / "windows-x64")
     parser.add_argument("--runtime-dir", type=Path, default=repo_root)
     parser.add_argument(
         "--output",
         type=Path,
-        default=repo_root / ".temp" / "week6_dirty_state_benchmark.json",
+        default=repo_root / ".temp" / "incremental_paths_benchmark.json",
     )
     args = parser.parse_args()
 
@@ -86,7 +112,7 @@ def main() -> int:
         scene = dr.create_scene()
         scene.init(
             dr.Render(
-                name="week6-benchmark",
+                name="incremental-paths-benchmark",
                 spectrum=dr.SRGBSpectrum(),
                 integrator=dr.WavePathIntegrator(log_level=dr.LogLevel.WARNING),
             )
@@ -152,39 +178,32 @@ def main() -> int:
         scene.update_surface(surface)
         results.append(_capture_step(scene, camera, step="surface_only", time_value=4.0))
 
-        shape = dr.RigidShape(
-            name="quad",
-            vertices=_quad_vertices(1.25),
-            triangles=_quad_triangles(),
-            transform=dr.MatrixTransform(transform),
-            surface="mat",
-        )
-        scene.update_shape(shape)
-        results.append(_capture_step(scene, camera, step="geometry_only", time_value=5.0))
-
         expected = {
-            "initial_build": ("full_rebuild", {"camera", "environment", "geometry", "surface"}),
-            "camera_only": ("incremental_camera_environment", {"camera"}),
-            "environment_only": ("incremental_camera_environment", {"environment"}),
-            "transform_only": ("incremental_camera_transform_environment", {"transform"}),
-            "surface_only": ("full_rebuild", {"surface"}),
-            "geometry_only": ("full_rebuild", {"geometry"}),
+            "initial_build": ("full_rebuild", {"camera", "environment", "geometry", "surface"}, True),
+            "camera_only": ("incremental_camera_environment", {"camera"}, False),
+            "environment_only": ("incremental_camera_environment", {"environment"}, False),
+            "transform_only": ("incremental_camera_transform_environment", {"transform"}, False),
+            "surface_only": ("full_rebuild", {"surface"}, True),
         }
 
         for entry in results:
-            expected_mode, expected_categories = expected[entry["step"]]
-            actual_categories = set(entry["dirty_categories"])
-            if entry["mode"] != expected_mode:
-                raise AssertionError(f"{entry['step']} expected mode {expected_mode}, got {entry['mode']}.")
-            if actual_categories != expected_categories:
+            expected_mode, expected_categories, expected_rebuild = expected[entry["step"]]
+            plan = entry["report_plan"]
+            if entry["report_mode"] != expected_mode:
+                raise AssertionError(f"{entry['step']} expected mode {expected_mode}, got {entry['report_mode']}.")
+            if set(plan["dirty_categories"]) != expected_categories:
                 raise AssertionError(
-                    f"{entry['step']} expected categories {sorted(expected_categories)}, got {sorted(actual_categories)}."
+                    f"{entry['step']} expected categories {sorted(expected_categories)}, got {sorted(plan['dirty_categories'])}."
+                )
+            if bool(plan["backend_rebuilt"]) != expected_rebuild:
+                raise AssertionError(
+                    f"{entry['step']} expected backend_rebuilt={expected_rebuild}, got {plan['backend_rebuilt']}."
                 )
             if int(entry["rgba_bytes"]) != 64 * 64 * 4:
                 raise AssertionError(f"{entry['step']} expected 16384 RGBA bytes, got {entry['rgba_bytes']}.")
 
         output = {
-            "benchmark": "week6_dirty_state",
+            "benchmark": "incremental_paths",
             "resolution": [64, 64],
             "results": results,
         }

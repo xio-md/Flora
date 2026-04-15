@@ -62,7 +62,7 @@ def main() -> int:
         scene = dr.create_scene()
         scene.init(
             dr.Render(
-                name="week2-backend",
+                name="backend-smoke",
                 spectrum=dr.SRGBSpectrum(),
                 integrator=dr.WavePathIntegrator(),
             )

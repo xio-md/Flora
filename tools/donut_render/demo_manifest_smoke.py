@@ -11,10 +11,10 @@ def main() -> int:
     repo_root = Path(__file__).resolve().parents[2]
     sample_script = repo_root / "samples" / "DonutRenderPyDemo" / "donut_render_demo_v0_1.py"
 
-    parser = argparse.ArgumentParser(description="Run the Week 4 DonutRenderPy demo and validate its output manifest.")
+    parser = argparse.ArgumentParser(description="Run the DonutRenderPy demo and validate its output manifest.")
     parser.add_argument("--module-dir", type=Path, default=repo_root / "bin" / "windows-x64")
     parser.add_argument("--runtime-dir", type=Path, default=repo_root)
-    parser.add_argument("--output-dir", type=Path, default=repo_root / ".temp" / "week4_demo_smoke")
+    parser.add_argument("--output-dir", type=Path, default=repo_root / ".temp" / "demo_manifest_smoke")
     parser.add_argument("--frames", type=int, default=2)
     parser.add_argument("--width", type=int, default=128)
     parser.add_argument("--height", type=int, default=96)
@@ -52,7 +52,7 @@ def main() -> int:
     if missing:
         raise AssertionError(f"Missing demo output files: {missing}")
 
-    print(f"week4_demo_smoke ok: {manifest_path}")
+    print(f"demo_manifest_smoke ok: {manifest_path}")
     return 0
 
 

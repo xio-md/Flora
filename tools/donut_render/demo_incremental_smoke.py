@@ -11,10 +11,10 @@ def main() -> int:
     repo_root = Path(__file__).resolve().parents[2]
     sample_script = repo_root / "samples" / "DonutRenderPyDemo" / "donut_render_demo_v0_5.py"
 
-    parser = argparse.ArgumentParser(description="Run the Week 8 DonutRenderPy demo v0.5 and validate incremental frame metadata.")
+    parser = argparse.ArgumentParser(description="Run the DonutRenderPy demo v0.5 and validate incremental frame metadata.")
     parser.add_argument("--module-dir", type=Path, default=repo_root / "bin" / "windows-x64")
     parser.add_argument("--runtime-dir", type=Path, default=repo_root)
-    parser.add_argument("--output-dir", type=Path, default=repo_root / ".temp" / "week8_demo_smoke")
+    parser.add_argument("--output-dir", type=Path, default=repo_root / ".temp" / "demo_incremental_smoke")
     parser.add_argument("--frames", type=int, default=4)
     parser.add_argument("--width", type=int, default=160)
     parser.add_argument("--height", type=int, default=120)
@@ -73,7 +73,7 @@ def main() -> int:
             f"Expected incremental_frame_count={max(0, expected_frames - 1)}, got {manifest.get('incremental_frame_count')}."
         )
 
-    print(f"week8_demo_smoke ok: {manifest_path}")
+    print(f"demo_incremental_smoke ok: {manifest_path}")
     return 0
 
 

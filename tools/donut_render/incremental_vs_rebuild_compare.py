@@ -56,7 +56,7 @@ def _create_scene(dr, *, width: int, height: int, env_rgb: tuple[float, float, f
     scene = dr.create_scene()
     scene.init(
         dr.Render(
-            name="week8-compare",
+            name="incremental-compare",
             spectrum=dr.SRGBSpectrum(),
             integrator=dr.WavePathIntegrator(log_level=dr.LogLevel.WARNING),
         )
@@ -129,13 +129,13 @@ def main() -> int:
 
     import DonutRenderPy as dr
 
-    parser = argparse.ArgumentParser(description="Compare Week 8 incremental renders against equivalent full rebuild renders.")
+    parser = argparse.ArgumentParser(description="Compare incremental renders against equivalent full rebuild renders.")
     parser.add_argument("--module-dir", type=Path, default=repo_root / "bin" / "windows-x64")
     parser.add_argument("--runtime-dir", type=Path, default=repo_root)
     parser.add_argument(
         "--output",
         type=Path,
-        default=repo_root / ".temp" / "week8_incremental_compare.json",
+        default=repo_root / ".temp" / "incremental_vs_rebuild_compare.json",
     )
     args = parser.parse_args()
 
@@ -270,7 +270,7 @@ def main() -> int:
         dr.destroy()
 
     output = {
-        "comparison": "week8_incremental_vs_rebuild",
+        "comparison": "incremental_vs_rebuild",
         "resolution": [width, height],
         "results": results,
     }

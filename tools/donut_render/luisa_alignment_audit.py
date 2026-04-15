@@ -165,7 +165,7 @@ def _build_summary(
 
 def _format_text(report: dict[str, Any]) -> str:
     lines: list[str] = []
-    lines.append("Week 1 audit: LuisaRenderPy -> RTXNS/Donut prototype")
+    lines.append("LuisaRenderPy compatibility audit")
     lines.append("")
     lines.append(
         "LuisaRenderPy surface: "
@@ -203,7 +203,7 @@ def _format_text(report: dict[str, Any]) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Audit LuisaRenderPy, raytracer.py, and the current RTXNS Python prototype for Week 1 planning."
+        description="Audit LuisaRenderPy, raytracer.py, and the current Donut Python prototype."
     )
     parser.add_argument("--rtxns-root", type=Path, default=_repo_root())
     parser.add_argument("--genesis-root", type=Path, default=_default_genesis_root())

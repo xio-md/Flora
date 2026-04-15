@@ -63,6 +63,9 @@ Linux 下把 `--module-dir` 改为 `bin/linux-x64` 即可。
 
 下面这些图片是当前 Python 示例直接生成的帧（`samples/GenesisStylePy`）：
 
-![示例帧 000](samples/GenesisStylePy/genesis_style_frame_000.png)
-![示例帧 003](samples/GenesisStylePy/genesis_style_frame_003.png)
-![示例帧 007](samples/GenesisStylePy/genesis_style_frame_007.png)
+<table>
+  <tr>
+    <td><img src="samples/GenesisStylePy/genesis_style_frame_000.png" alt="示例帧 000" width="320" /></td>
+    <td><img src="samples/GenesisStylePy/genesis_style_frame_003.png" alt="示例帧 003" width="320" /></td>
+  </tr>
+</table>

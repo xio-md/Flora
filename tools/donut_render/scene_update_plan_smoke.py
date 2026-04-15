@@ -132,13 +132,13 @@ def main() -> int:
 
     import DonutRenderPy as dr
 
-    parser = argparse.ArgumentParser(description="Validate Week 7 scene update planning and API alignment hooks.")
+    parser = argparse.ArgumentParser(description="Validate scene update planning and API alignment hooks.")
     parser.add_argument("--module-dir", type=Path, default=repo_root / "bin" / "windows-x64")
     parser.add_argument("--runtime-dir", type=Path, default=repo_root)
     parser.add_argument(
         "--output",
         type=Path,
-        default=repo_root / ".temp" / "week7_scene_api_plan.json",
+        default=repo_root / ".temp" / "scene_update_plan.json",
     )
     args = parser.parse_args()
 
@@ -159,7 +159,7 @@ def main() -> int:
         scene = dr.create_scene()
         scene.init(
             dr.Render(
-                name="week7-plan-smoke",
+                name="scene-plan-smoke",
                 spectrum=dr.SRGBSpectrum(),
                 integrator=dr.WavePathIntegrator(log_level=dr.LogLevel.WARNING),
             )
@@ -285,7 +285,7 @@ def main() -> int:
             )
 
         output = {
-            "validation": "week7_scene_api_plan",
+            "validation": "scene_update_plan",
             "resolution": [64, 64],
             "results": results,
         }
