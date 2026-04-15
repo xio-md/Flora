@@ -1,4 +1,7 @@
 # RTX Neural Shading: Quick Start Guide
+
+> **Lab fork:** The interactive C++ neural samples (Simple Inferencing, Shader Training, SlangPy demos, etc.) are not shipped in this repository. The supported workflow is the Donut headless Vulkan Python extension and the Python demos under `samples/`. See the root `README.md` (Chinese) for configure flags.
+
 RTX Neural Shading can be build and run on both Windows and Linux
 
 ## Build steps

@@ -11,7 +11,7 @@ cmake_minimum_required(VERSION 3.10)
 
 project(
     RtxNeuralShading
-    DESCRIPTION "RTX Neural Shading"
+    DESCRIPTION "Lab embodied-sim render backend (Donut + Python); upstream RTXNS layout trimmed"
     LANGUAGES CXX
 )
 
@@ -24,8 +24,7 @@ option(DONUT_WITH_DX11 "Not supported in this SDK" OFF)
 option(DONUT_WITH_DX12 "DX12 is only supported with DX12_COOP_VECTOR_PREVIEW ON" OFF)
 option(DONUT_WITH_VULKAN "" ON)
 option(DONUT_WITH_STATIC_SHADERS "" ON)
-option(RTXNS_BUILD_NEURAL_COMPONENTS "Build neural shading libraries and utilities" ON)
-option(RTXNS_BUILD_SAMPLES "Build the sample applications" ON)
+option(RTXNS_BUILD_NEURAL_COMPONENTS "Build upstream RTXNS neural shading libraries (Slang toolchain required)" OFF)
 
 set(DONUT_DIR "${CMAKE_SOURCE_DIR}/external/donut"
     CACHE PATH "Path to donut framework")
@@ -87,16 +86,7 @@ endif()
 add_subdirectory(external/donut)
 add_subdirectory(src)
 
-if (RTXNS_BUILD_SAMPLES AND NOT RTXNS_BUILD_NEURAL_COMPONENTS)
-    message(FATAL_ERROR "RTXNS samples require RTXNS_BUILD_NEURAL_COMPONENTS=ON.")
-endif()
-
-if (RTXNS_BUILD_SAMPLES)
-    add_subdirectory(samples)
-    set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT SimpleInferencing)
-endif()
-
-if (RTXNS_BUILD_NEURAL_COMPONENTS OR RTXNS_BUILD_SAMPLES)
+if (RTXNS_BUILD_NEURAL_COMPONENTS)
     if (NOT EXISTS "${SHADERMAKE_SLANG_PATH}")
         message(FATAL_ERROR "SHADERMAKE_SLANG_PATH not set!")
     endif()

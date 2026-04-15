@@ -14,7 +14,7 @@ if (RTXNS_BUILD_NEURAL_COMPONENTS)
     add_subdirectory(NeuralShading_Shaders)
 endif()
 
-option(RTXNS_BUILD_DONUT_RENDER_PYTHON "Build the Donut Python backend targets." OFF)
+option(RTXNS_BUILD_DONUT_RENDER_PYTHON "Build the Donut Python backend targets (DonutRenderPyNative)." ON)
 option(RTXNS_BUILD_PYTHON_BINDINGS "Deprecated alias for RTXNS_BUILD_DONUT_RENDER_PYTHON." OFF)
 
 if (RTXNS_BUILD_PYTHON_BINDINGS)
