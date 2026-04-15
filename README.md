@@ -59,6 +59,57 @@ python samples\DonutRenderPyDemo\donut_render_demo_v0_5.py --module-dir "$PWD\bi
 
 Linux 下把 `--module-dir` 改为 `bin/linux-x64` 即可。
 
+## Python 调用风格示例
+
+下面这个最小示例展示了我们当前推荐的调用方式：按“注册材质/几何体/相机 -> 更新状态 -> 渲染”的流程组织，方便后续 Agent 基于 API 做自动化执行与任务编排。
+
+```python
+from pathlib import Path
+
+import numpy as np
+from rtxns_genesis_style import CameraDesc, GenesisStyleRenderer, SurfaceDesc
+
+repo_root = Path(__file__).resolve().parents[1]
+module_dir = repo_root / "bin" / "windows-x64"  # Linux 用 bin/linux-x64
+
+vertices = np.array(
+    [
+        (-1.0, -1.0, 0.0),
+        (1.0, -1.0, 0.0),
+        (1.0, 1.0, 0.0),
+        (-1.0, 1.0, 0.0),
+    ],
+    dtype=np.float32,
+)
+triangles = np.array([(0, 1, 2), (0, 2, 3)], dtype=np.uint32)
+transform = np.eye(4, dtype=np.float32)
+transform[:3, 3] = np.array([0.0, 0.5, 0.0], dtype=np.float32)
+
+camera = CameraDesc(
+    uid="main",
+    pos=(2.5, 1.8, 2.8),
+    lookat=(0.0, 0.5, 0.0),
+    up=(0.0, 1.0, 0.0),
+    res=(640, 480),
+    fov=45.0,
+    near=0.1,
+    far=100.0,
+)
+
+with GenesisStyleRenderer(module_dir=module_dir, runtime_dir=repo_root) as renderer:
+    renderer.set_ambient((0.12, 0.12, 0.12), (0.08, 0.08, 0.08))
+    renderer.set_default_light(direction=(-0.7, -1.0, -0.8), color=(1.0, 0.95, 0.9), irradiance=0.9)
+
+    renderer.add_surface("box", SurfaceDesc(base_color=(0.9, 0.5, 0.2, 1.0), roughness=0.6))
+    renderer.add_rigid("box", vertices=vertices, triangles=triangles)
+    renderer.update_rigid("box", transform)
+
+    renderer.add_camera(camera)
+    rgb = renderer.render_camera(camera, force_render=True, time=0.0)  # shape: (H, W, 3), dtype=uint8
+
+print(rgb.shape, rgb.dtype)
+```
+
 ## 示例输出
 
 下面这些图片是当前 Python 示例直接生成的帧（`samples/GenesisStylePy`）：
