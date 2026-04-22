@@ -59,6 +59,8 @@ python samples\DonutRenderPyDemo\donut_render_demo_v0_5.py --module-dir "$PWD\bi
 
 Linux 下把 `--module-dir` 改为 `bin/linux-x64` 即可。
 
+`tools/donut_render` 下的 smoke 脚本默认会按当前平台自动选择 `bin/windows-x64` 或 `bin/linux-x64`，也可通过 `--module-dir` / `--runtime-dir` 显式覆盖，方便在不同构建目录下复用同一套检查命令。
+
 ## Python 调用风格示例
 
 下面这个最小示例展示了我们当前推荐的调用方式：按“注册材质/几何体/相机 -> 更新状态 -> 渲染”的流程组织，方便后续 Agent 基于 API 做自动化执行与任务编排。

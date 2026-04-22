@@ -1,7 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
+
+
+def _default_module_dir(repo_root: Path) -> Path:
+    platform_dir = "windows-x64" if os.name == "nt" else "linux-x64"
+    return repo_root / "bin" / platform_dir
 
 
 def _make_render(dr, name: str):
@@ -35,6 +41,12 @@ def main() -> int:
     repo_root = Path(__file__).resolve().parents[2]
     python_root = repo_root / "python"
 
+    parser = argparse.ArgumentParser(description="Validate ownership and lifecycle error semantics.")
+    parser.add_argument("--module-dir", type=Path, default=_default_module_dir(repo_root))
+    parser.add_argument("--runtime-dir", type=Path, default=repo_root)
+    parser.add_argument("--quiet", action="store_true")
+    args = parser.parse_args()
+
     import sys
 
     sys.path.insert(0, str(python_root))
@@ -45,8 +57,8 @@ def main() -> int:
 
     dr.init(
         context_path=repo_root,
-        runtime_dir=repo_root,
-        module_dir=repo_root / "bin" / "windows-x64",
+        runtime_dir=args.runtime_dir,
+        module_dir=args.module_dir,
         backend="vulkan",
         device_index=-1,
         log_level=dr.LogLevel.INFO,
@@ -111,8 +123,8 @@ def main() -> int:
 
     dr.init(
         context_path=repo_root,
-        runtime_dir=repo_root,
-        module_dir=repo_root / "bin" / "windows-x64",
+        runtime_dir=args.runtime_dir,
+        module_dir=args.module_dir,
         backend="vulkan",
         device_index=-1,
         log_level=dr.LogLevel.INFO,
@@ -128,9 +140,6 @@ def main() -> int:
     fresh_scene.destroy()
     dr.destroy()
 
-    parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument("--quiet", action="store_true")
-    args, _ = parser.parse_known_args()
     if not args.quiet:
         for line in results:
             print(line)
