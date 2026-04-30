@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import struct
+from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
@@ -27,6 +28,14 @@ _ACCESSOR_TYPE_TO_COMPONENTS = {
 }
 
 
+@dataclass(frozen=True)
+class EmbeddedTextureDesc:
+    name: str
+    image_bytes: bytes
+    mime_type: str = "image/png"
+    has_alpha: bool = False
+
+
 def _pad_bytes(blob: bytes, pad_byte: bytes) -> bytes:
     padding = (-len(blob)) % 4
     if padding == 0:
@@ -40,6 +49,8 @@ class GlbSceneBuilder:
         self._buffer_views: list[dict] = []
         self._accessors: list[dict] = []
         self._materials: list[dict] = []
+        self._images: list[dict] = []
+        self._textures: list[dict] = []
         self._meshes: list[dict] = []
         self._nodes: list[dict] = []
 
@@ -51,21 +62,38 @@ class GlbSceneBuilder:
         metallic: float,
         emissive: np.ndarray,
         double_sided: bool,
+        base_color_texture: Optional[EmbeddedTextureDesc] = None,
+        metallic_roughness_texture: Optional[EmbeddedTextureDesc] = None,
+        emissive_texture: Optional[EmbeddedTextureDesc] = None,
     ) -> int:
+        pbr_metallic_roughness: dict = {
+            "baseColorFactor": [float(x) for x in base_color],
+            "roughnessFactor": float(roughness),
+            "metallicFactor": float(metallic),
+        }
+        if base_color_texture is not None:
+            pbr_metallic_roughness["baseColorTexture"] = {
+                "index": self._add_texture(base_color_texture)
+            }
+        if metallic_roughness_texture is not None:
+            pbr_metallic_roughness["metallicRoughnessTexture"] = {
+                "index": self._add_texture(metallic_roughness_texture)
+            }
+
         material: dict = {
             "name": name,
-            "pbrMetallicRoughness": {
-                "baseColorFactor": [float(x) for x in base_color],
-                "roughnessFactor": float(roughness),
-                "metallicFactor": float(metallic),
-            },
+            "pbrMetallicRoughness": pbr_metallic_roughness,
         }
 
         if np.any(np.abs(emissive) > 1.0e-6):
             material["emissiveFactor"] = [float(x) for x in emissive]
+        if emissive_texture is not None:
+            material["emissiveTexture"] = {
+                "index": self._add_texture(emissive_texture)
+            }
         if double_sided:
             material["doubleSided"] = True
-        if base_color[3] < 0.999:
+        if base_color[3] < 0.999 or (base_color_texture is not None and base_color_texture.has_alpha):
             material["alphaMode"] = "BLEND"
 
         index = len(self._materials)
@@ -149,6 +177,10 @@ class GlbSceneBuilder:
             "bufferViews": self._buffer_views,
             "accessors": self._accessors,
         }
+        if self._images:
+            document["images"] = self._images
+        if self._textures:
+            document["textures"] = self._textures
 
         json_blob = _pad_bytes(
             json.dumps(document, separators=(",", ":"), ensure_ascii=True).encode("utf-8"),
@@ -188,7 +220,7 @@ class GlbSceneBuilder:
         self._accessors.append(accessor)
         return index
 
-    def _add_blob(self, payload: bytes, target: int) -> int:
+    def _add_blob(self, payload: bytes, target: Optional[int]) -> int:
         while len(self._binary) % 4 != 0:
             self._binary.append(0)
 
@@ -199,11 +231,35 @@ class GlbSceneBuilder:
             "buffer": 0,
             "byteOffset": offset,
             "byteLength": len(payload),
-            "target": target,
         }
+        if target is not None:
+            buffer_view["target"] = target
         index = len(self._buffer_views)
         self._buffer_views.append(buffer_view)
         return index
+
+    def _add_texture(self, texture: EmbeddedTextureDesc) -> int:
+        image_index = self._add_image(texture)
+        texture_index = len(self._textures)
+        self._textures.append(
+            {
+                "name": texture.name,
+                "source": image_index,
+            }
+        )
+        return texture_index
+
+    def _add_image(self, texture: EmbeddedTextureDesc) -> int:
+        image_index = len(self._images)
+        buffer_view = self._add_blob(bytes(texture.image_bytes), None)
+        self._images.append(
+            {
+                "name": texture.name,
+                "bufferView": buffer_view,
+                "mimeType": texture.mime_type,
+            }
+        )
+        return image_index
 
     @staticmethod
     def _count_for(array: np.ndarray, accessor_type: str) -> int:

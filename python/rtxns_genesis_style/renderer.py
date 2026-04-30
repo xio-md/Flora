@@ -2,15 +2,17 @@ from __future__ import annotations
 
 import importlib
 import shutil
+import struct
 import sys
 import threading
+import zlib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence
 
 import numpy as np
 
-from .glb_builder import GlbSceneBuilder
+from .glb_builder import EmbeddedTextureDesc, GlbSceneBuilder
 
 
 def _repo_root() -> Path:
@@ -136,14 +138,23 @@ def _transform_normals(normals: np.ndarray, matrix: np.ndarray) -> np.ndarray:
     return np.ascontiguousarray(_normalize_vectors(normals @ normal_matrix.T), dtype=np.float32)
 
 
-def _extract_texture_value(texture: Any, channels: int, default: Sequence[float]) -> np.ndarray:
+def _extract_texture_value(
+    texture: Any,
+    channels: int,
+    default: Sequence[float],
+    *,
+    textured_default: Optional[Sequence[float]] = None,
+) -> np.ndarray:
     if texture is None:
         return np.asarray(default, dtype=np.float32)
 
     if isinstance(texture, Mapping):
+        if "image_data" in texture or "file" in texture:
+            fallback = default if textured_default is None else textured_default
+            return _texture_scale_values(texture, channels, fallback)
         if "textures" in texture:
             items = texture.get("textures") or []
-            return _extract_texture_value(items[0] if items else None, channels, default)
+            return _extract_texture_value(items[0] if items else None, channels, default, textured_default=textured_default)
         if "color" in texture:
             texture = texture["color"]
         elif "image_color" in texture:
@@ -152,10 +163,14 @@ def _extract_texture_value(texture: Any, channels: int, default: Sequence[float]
     if hasattr(texture, "textures"):
         items = getattr(texture, "textures")
         texture = items[0] if items else None
-        return _extract_texture_value(texture, channels, default)
+        return _extract_texture_value(texture, channels, default, textured_default=textured_default)
 
     if texture is None:
         return np.asarray(default, dtype=np.float32)
+
+    if _texture_has_payload(texture):
+        fallback = default if textured_default is None else textured_default
+        return _texture_scale_values(texture, channels, fallback)
 
     if hasattr(texture, "color"):
         values = np.asarray(getattr(texture, "color"), dtype=np.float32).reshape(-1)
@@ -184,6 +199,277 @@ def _extract_texture_value(texture: Any, channels: int, default: Sequence[float]
     return np.clip(values.astype(np.float32), 0.0, 1.0)
 
 
+def _texture_has_payload(texture: Any) -> bool:
+    if texture is None:
+        return False
+    if isinstance(texture, Mapping):
+        return bool(texture.get("file")) or bool(texture.get("image_data"))
+    return bool(getattr(texture, "file", "")) or bool(getattr(texture, "image_data", b""))
+
+
+def _texture_file(texture: Any) -> str:
+    if isinstance(texture, Mapping):
+        return str(texture.get("file", ""))
+    return str(getattr(texture, "file", ""))
+
+
+def _texture_image_data(texture: Any) -> bytes:
+    if isinstance(texture, Mapping):
+        value = texture.get("image_data", b"")
+    else:
+        value = getattr(texture, "image_data", b"")
+    return value if isinstance(value, bytes) else str(value).encode("utf-8")
+
+
+def _texture_width(texture: Any) -> int:
+    if isinstance(texture, Mapping):
+        return int(texture.get("width", 0))
+    return int(getattr(texture, "width", 0))
+
+
+def _texture_height(texture: Any) -> int:
+    if isinstance(texture, Mapping):
+        return int(texture.get("height", 0))
+    return int(getattr(texture, "height", 0))
+
+
+def _texture_channel(texture: Any) -> int:
+    if isinstance(texture, Mapping):
+        return int(texture.get("channel", 0))
+    return int(getattr(texture, "channel", 0))
+
+
+def _texture_encoding(texture: Any) -> str:
+    if isinstance(texture, Mapping):
+        value = texture.get("encoding", "")
+    else:
+        value = getattr(texture, "encoding", "")
+    return "" if value is None else str(value).strip().lower()
+
+
+def _texture_scale_values(texture: Any, channels: int, default: Sequence[float]) -> np.ndarray:
+    if isinstance(texture, Mapping):
+        scale = texture.get("scale", None)
+    else:
+        scale = getattr(texture, "scale", None)
+    if scale is None:
+        values = np.asarray(default, dtype=np.float32)
+    else:
+        values = np.asarray(scale, dtype=np.float32).reshape(-1)
+    if values.size == 1 and channels > 1:
+        values = np.repeat(values, channels)
+    elif values.size < channels:
+        pad = np.asarray(default, dtype=np.float32)
+        values = np.concatenate([values, pad[values.size : channels]])
+    else:
+        values = values[:channels]
+    return np.clip(values.astype(np.float32), 0.0, 1.0)
+
+
+def _resolve_texture_file_path(path_value: str) -> Path:
+    candidate = Path(path_value)
+    if candidate.is_absolute():
+        return candidate
+    repo_candidate = _repo_root() / candidate
+    if repo_candidate.exists():
+        return repo_candidate
+    return candidate
+
+
+def _infer_texture_mime_type(texture: Any, role: str) -> str:
+    encoding = _texture_encoding(texture)
+    suffix = Path(_texture_file(texture)).suffix.lower()
+    if encoding in ("png", "image/png") or suffix == ".png":
+        return "image/png"
+    if encoding in ("jpg", "jpeg", "image/jpeg") or suffix in (".jpg", ".jpeg"):
+        return "image/jpeg"
+    raise ValueError(f"{role} only supports PNG/JPEG encoded textures when using file/image bytes.")
+
+
+def _normalize_raw_texture_pixels(texture: Any, role: str) -> np.ndarray:
+    image_data = _texture_image_data(texture)
+    width = _texture_width(texture)
+    height = _texture_height(texture)
+    channels = _texture_channel(texture)
+    if width <= 0 or height <= 0:
+        raise ValueError(f"{role} raw texture requires positive width and height.")
+    if channels <= 0:
+        pixel_count = width * height
+        if pixel_count <= 0 or len(image_data) % pixel_count != 0:
+            raise ValueError(f"{role} raw texture must provide channel count or exact image_data size.")
+        channels = len(image_data) // pixel_count
+    if channels not in (1, 2, 3, 4):
+        raise ValueError(f"{role} raw texture only supports 1-4 channels, got {channels}.")
+    expected_size = width * height * channels
+    if len(image_data) != expected_size:
+        raise ValueError(f"{role} raw texture expects {expected_size} bytes, got {len(image_data)}.")
+    return np.frombuffer(image_data, dtype=np.uint8).reshape(height, width, channels).copy()
+
+
+def _png_chunk(chunk_type: bytes, payload: bytes) -> bytes:
+    checksum = zlib.crc32(chunk_type + payload) & 0xFFFFFFFF
+    return struct.pack(">I", len(payload)) + chunk_type + payload + struct.pack(">I", checksum)
+
+
+def _encode_png(pixels: np.ndarray) -> bytes:
+    image = np.ascontiguousarray(pixels, dtype=np.uint8)
+    if image.ndim != 3:
+        raise ValueError("PNG encoder expects an array of shape (H, W, C).")
+    height, width, channels = image.shape
+    if channels not in (1, 2, 3, 4):
+        raise ValueError("PNG encoder only supports 1-4 channels.")
+    color_type = {1: 0, 2: 4, 3: 2, 4: 6}[channels]
+    raw_scanlines = b"".join(b"\x00" + image[row].tobytes() for row in range(height))
+    header = struct.pack(">IIBBBBB", width, height, 8, color_type, 0, 0, 0)
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + _png_chunk(b"IHDR", header)
+        + _png_chunk(b"IDAT", zlib.compress(raw_scanlines, level=9))
+        + _png_chunk(b"IEND", b"")
+    )
+
+
+def _build_texture_desc(texture: Any, role: str, default_name: str) -> EmbeddedTextureDesc:
+    image_data = _texture_image_data(texture)
+    if image_data:
+        encoding = _texture_encoding(texture)
+        if encoding in ("", "raw", "raw8", "r8", "rg8", "rgb8", "rgba8"):
+            pixels = _normalize_raw_texture_pixels(texture, role)
+            return EmbeddedTextureDesc(
+                name=default_name,
+                image_bytes=_encode_png(pixels),
+                mime_type="image/png",
+                has_alpha=int(pixels.shape[2]) in (2, 4),
+            )
+        return EmbeddedTextureDesc(
+            name=default_name,
+            image_bytes=image_data,
+            mime_type=_infer_texture_mime_type(texture, role),
+            has_alpha=_texture_channel(texture) in (2, 4),
+        )
+
+    file_value = _texture_file(texture)
+    if not file_value:
+        raise ValueError(f"{role} texture payload is empty.")
+    path = _resolve_texture_file_path(file_value)
+    if not path.is_file():
+        raise ValueError(f"{role} texture file was not found: {path}")
+    return EmbeddedTextureDesc(
+        name=default_name,
+        image_bytes=path.read_bytes(),
+        mime_type=_infer_texture_mime_type(texture, role),
+        has_alpha=_texture_channel(texture) in (2, 4),
+    )
+
+
+def _raw_texture_size(texture: Any, role: str) -> tuple[int, int]:
+    pixels = _normalize_raw_texture_pixels(texture, role)
+    return int(pixels.shape[0]), int(pixels.shape[1])
+
+
+def _raw_texture_to_channels(texture: Any, role: str, size: tuple[int, int], channels: int, default: Sequence[int]) -> np.ndarray:
+    height, width = size
+    if texture is None:
+        fill = np.asarray(default[:channels], dtype=np.uint8).reshape(1, 1, channels)
+        return np.broadcast_to(fill, (height, width, channels)).copy()
+    pixels = _normalize_raw_texture_pixels(texture, role)
+    if (pixels.shape[0], pixels.shape[1]) != size:
+        raise ValueError(f"{role} raw textures must share the same resolution.")
+    source_channels = int(pixels.shape[2])
+    if source_channels == channels:
+        return pixels.copy()
+    if channels == 1:
+        return pixels[:, :, :1].copy()
+    if source_channels == 1:
+        return np.repeat(pixels, channels, axis=2)
+    if source_channels < channels:
+        fill = np.asarray(default[:channels], dtype=np.uint8).reshape(1, 1, channels)
+        result = np.broadcast_to(fill, (height, width, channels)).copy()
+        result[:, :, :source_channels] = pixels
+        return result
+    return pixels[:, :, :channels].copy()
+
+
+def _build_base_color_texture(base_texture: Any, opacity_texture: Any, name: str) -> Optional[EmbeddedTextureDesc]:
+    if not _texture_has_payload(base_texture) and not _texture_has_payload(opacity_texture):
+        return None
+    if _texture_has_payload(opacity_texture) and _texture_encoding(opacity_texture) not in ("", "raw", "raw8", "r8", "rg8", "rgb8", "rgba8"):
+        raise ValueError("Opacity textures currently require raw image_data so they can be packed into base color alpha.")
+    if _texture_has_payload(base_texture) and _texture_encoding(base_texture) not in ("", "raw", "raw8", "r8", "rg8", "rgb8", "rgba8") and _texture_has_payload(opacity_texture):
+        raise ValueError("Encoded/file base color textures cannot currently be combined with a separate opacity texture.")
+    if _texture_has_payload(base_texture) and _texture_encoding(base_texture) not in ("", "raw", "raw8", "r8", "rg8", "rgb8", "rgba8"):
+        return _build_texture_desc(base_texture, f"{name}.base_color", f"{name}_base_color")
+
+    size = None
+    if _texture_has_payload(base_texture):
+        size = _raw_texture_size(base_texture, f"{name}.base_color")
+    if _texture_has_payload(opacity_texture):
+        opacity_size = _raw_texture_size(opacity_texture, f"{name}.opacity")
+        if size is None:
+            size = opacity_size
+        elif size != opacity_size:
+            raise ValueError("Base color and opacity textures must share the same resolution.")
+    if size is None:
+        return None
+
+    rgba = _raw_texture_to_channels(base_texture, f"{name}.base_color", size, 4, (255, 255, 255, 255))
+    if _texture_has_payload(opacity_texture):
+        alpha = _raw_texture_to_channels(opacity_texture, f"{name}.opacity", size, 1, (255,))
+        rgba[:, :, 3] = alpha[:, :, 0]
+    return EmbeddedTextureDesc(
+        name=f"{name}_base_color",
+        image_bytes=_encode_png(rgba),
+        mime_type="image/png",
+        has_alpha=True,
+    )
+
+
+def _build_metallic_roughness_texture(roughness_texture: Any, metallic_texture: Any, name: str) -> Optional[EmbeddedTextureDesc]:
+    if not _texture_has_payload(roughness_texture) and not _texture_has_payload(metallic_texture):
+        return None
+    for role, texture in (("roughness", roughness_texture), ("metallic", metallic_texture)):
+        if _texture_has_payload(texture) and _texture_encoding(texture) not in ("", "raw", "raw8", "r8", "rg8", "rgb8", "rgba8"):
+            raise ValueError(f"{name}.{role} currently requires raw image_data so it can be packed into metallicRoughnessTexture.")
+
+    size = None
+    if _texture_has_payload(roughness_texture):
+        size = _raw_texture_size(roughness_texture, f"{name}.roughness")
+    if _texture_has_payload(metallic_texture):
+        metallic_size = _raw_texture_size(metallic_texture, f"{name}.metallic")
+        if size is None:
+            size = metallic_size
+        elif size != metallic_size:
+            raise ValueError("Roughness and metallic textures must share the same resolution.")
+    if size is None:
+        return None
+
+    packed = np.zeros((size[0], size[1], 4), dtype=np.uint8)
+    packed[:, :, 1] = _raw_texture_to_channels(roughness_texture, f"{name}.roughness", size, 1, (255,))[:, :, 0]
+    packed[:, :, 2] = _raw_texture_to_channels(metallic_texture, f"{name}.metallic", size, 1, (255,))[:, :, 0]
+    packed[:, :, 3] = 255
+    return EmbeddedTextureDesc(
+        name=f"{name}_metallic_roughness",
+        image_bytes=_encode_png(packed),
+        mime_type="image/png",
+        has_alpha=False,
+    )
+
+
+def _build_emissive_texture(texture: Any, name: str) -> Optional[EmbeddedTextureDesc]:
+    if not _texture_has_payload(texture):
+        return None
+    if _texture_encoding(texture) not in ("", "raw", "raw8", "r8", "rg8", "rgb8", "rgba8"):
+        return _build_texture_desc(texture, f"{name}.emissive", f"{name}_emissive")
+    size = _raw_texture_size(texture, f"{name}.emissive")
+    rgb = _raw_texture_to_channels(texture, f"{name}.emissive", size, 3, (255, 255, 255))
+    return EmbeddedTextureDesc(
+        name=f"{name}_emissive",
+        image_bytes=_encode_png(rgb),
+        mime_type="image/png",
+        has_alpha=False,
+    )
+
+
 def _coerce_surface_desc(surface: Any) -> "SurfaceDesc":
     if isinstance(surface, SurfaceDesc):
         return surface
@@ -196,25 +482,55 @@ def _coerce_surface_desc(surface: Any) -> "SurfaceDesc":
         if "opacity" in surface and len(base) < 4:
             base = tuple(base) + (surface["opacity"],)
         emissive = surface.get("emissive", (0.0, 0.0, 0.0))
+        material_name = str(surface.get("name", "surface"))
+        base_color_texture = _build_base_color_texture(surface.get("base_color"), surface.get("opacity"), material_name)
+        metallic_roughness_texture = _build_metallic_roughness_texture(
+            surface.get("roughness"),
+            surface.get("metallic"),
+            material_name,
+        )
+        emissive_texture = _build_emissive_texture(surface.get("emissive"), material_name)
         return SurfaceDesc(
-            base_color=tuple(_extract_texture_value(base, 4, (0.8, 0.8, 0.8, 1.0))),
-            roughness=float(np.clip(surface.get("roughness", 1.0), 0.0, 1.0)),
-            metallic=float(np.clip(surface.get("metallic", 0.0), 0.0, 1.0)),
-            emissive=tuple(_extract_texture_value(emissive, 3, (0.0, 0.0, 0.0))),
+            base_color=tuple(_extract_texture_value(base, 4, (0.8, 0.8, 0.8, 1.0), textured_default=(1.0, 1.0, 1.0, 1.0))),
+            roughness=float(_extract_texture_value(surface.get("roughness", 1.0), 1, (1.0,), textured_default=(1.0,))[0]),
+            metallic=float(_extract_texture_value(surface.get("metallic", 0.0), 1, (0.0,), textured_default=(1.0,))[0]),
+            emissive=tuple(_extract_texture_value(emissive, 3, (0.0, 0.0, 0.0), textured_default=(1.0, 1.0, 1.0))),
             double_sided=bool(surface.get("double_sided", False)),
+            base_color_texture=base_color_texture,
+            metallic_roughness_texture=metallic_roughness_texture,
+            emissive_texture=emissive_texture,
         )
 
     rgba_source = surface.get_rgba() if hasattr(surface, "get_rgba") else getattr(surface, "color", None)
     emission_source = surface.get_emission() if hasattr(surface, "get_emission") else getattr(surface, "emissive", None)
     roughness_source = getattr(surface, "roughness_texture", getattr(surface, "roughness", None))
     metallic_source = getattr(surface, "metallic_texture", getattr(surface, "metallic", None))
+    material_name = str(getattr(surface, "name", "surface"))
 
     return SurfaceDesc(
-        base_color=tuple(_extract_texture_value(rgba_source, 4, (0.8, 0.8, 0.8, 1.0))),
-        roughness=float(_extract_texture_value(roughness_source, 1, (1.0,))[0]),
-        metallic=float(_extract_texture_value(metallic_source, 1, (0.0,))[0]),
-        emissive=tuple(_extract_texture_value(emission_source, 3, (0.0, 0.0, 0.0))),
+        base_color=tuple(
+            _extract_texture_value(
+                rgba_source,
+                4,
+                (0.8, 0.8, 0.8, 1.0),
+                textured_default=(1.0, 1.0, 1.0, 1.0),
+            )
+        ),
+        roughness=float(_extract_texture_value(roughness_source, 1, (1.0,), textured_default=(1.0,))[0]),
+        metallic=float(_extract_texture_value(metallic_source, 1, (0.0,), textured_default=(1.0,))[0]),
+        emissive=tuple(_extract_texture_value(emission_source, 3, (0.0, 0.0, 0.0), textured_default=(1.0, 1.0, 1.0))),
         double_sided=bool(getattr(surface, "double_sided", False) or False),
+        base_color_texture=_build_base_color_texture(
+            rgba_source,
+            getattr(surface, "opacity", None),
+            material_name,
+        ),
+        metallic_roughness_texture=_build_metallic_roughness_texture(
+            roughness_source,
+            metallic_source,
+            material_name,
+        ),
+        emissive_texture=_build_emissive_texture(emission_source, material_name),
     )
 
 
@@ -369,6 +685,9 @@ class SurfaceDesc:
     metallic: float = 0.0
     emissive: tuple[float, float, float] = (0.0, 0.0, 0.0)
     double_sided: bool = False
+    base_color_texture: Optional[EmbeddedTextureDesc] = None
+    metallic_roughness_texture: Optional[EmbeddedTextureDesc] = None
+    emissive_texture: Optional[EmbeddedTextureDesc] = None
 
 
 @dataclass(frozen=True)
@@ -661,6 +980,9 @@ class GenesisStyleRenderer:
                     metallic=float(surface.metallic),
                     emissive=np.asarray(surface.emissive, dtype=np.float32),
                     double_sided=bool(surface.double_sided),
+                    base_color_texture=surface.base_color_texture,
+                    metallic_roughness_texture=surface.metallic_roughness_texture,
+                    emissive_texture=surface.emissive_texture,
                 )
 
             builder.add_mesh(
