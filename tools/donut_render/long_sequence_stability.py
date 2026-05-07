@@ -57,17 +57,22 @@ def _particle_layout(frame: float, n: int) -> tuple[np.ndarray, np.ndarray]:
 def main() -> int:
     repo_root = Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser(
-        description="Run a long-frame DonutRenderPy sequence with deformable + particles (Week 10 stability)."
+        description="Long-frame DonutRenderPy run: deformable grid + particles each frame (stability harness)."
     )
     parser.add_argument("--module-dir", type=Path, default=_default_module_dir(repo_root))
     parser.add_argument("--runtime-dir", type=Path, default=repo_root)
-    parser.add_argument("--frames", type=int, default=120, help="Must be >= 100 for Week 10 acceptance.")
+    parser.add_argument(
+        "--frames",
+        type=int,
+        default=120,
+        help="Number of frames (default 120; use 100+ for long-run coverage).",
+    )
     parser.add_argument("--width", type=int, default=64)
     parser.add_argument("--height", type=int, default=64)
     parser.add_argument(
         "--output",
         type=Path,
-        default=repo_root / ".temp" / "week10_long_sequence_stability.json",
+        default=repo_root / ".temp" / "long_sequence_stability.json",
         help="JSON summary path.",
     )
     parser.add_argument("--quiet", action="store_true")
@@ -75,7 +80,7 @@ def main() -> int:
 
     frame_count = max(1, int(args.frames))
     if frame_count < 100:
-        print("warning: Week 10 plan expects at least 100 frames; continuing with fewer.", file=sys.stderr)
+        print("warning: fewer than 100 frames; long-run coverage is reduced.", file=sys.stderr)
 
     sys.path.insert(0, str(repo_root / "python"))
     import DonutRenderPy as dr
@@ -111,7 +116,7 @@ def main() -> int:
         scene = dr.create_scene()
         scene.init(
             dr.Render(
-                name="week10-long-sequence",
+                name="dynamic-long-sequence",
                 spectrum=dr.SRGBSpectrum(),
                 integrator=dr.WavePathIntegrator(log_level=dr.LogLevel.WARNING, max_depth=4),
             )
@@ -192,7 +197,7 @@ def main() -> int:
         dr.destroy()
 
     summary = {
-        "tool": "week10_long_sequence_stability",
+        "tool": "long_sequence_stability",
         "frame_count": frame_count,
         "resolution": [width, height],
         "expected_rgba_bytes": expected_rgba,

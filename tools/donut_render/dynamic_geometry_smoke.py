@@ -49,7 +49,7 @@ def main() -> int:
     scene = None
     try:
         scene = dr.create_scene()
-        scene.init(dr.Render(name="week10-smoke", spectrum=dr.SRGBSpectrum(), integrator=dr.WavePathIntegrator()))
+        scene.init(dr.Render(name="dynamic-geometry-smoke", spectrum=dr.SRGBSpectrum(), integrator=dr.WavePathIntegrator()))
         scene.update_environment(dr.Environment(name="env", emission=dr.ColorTexture((0.07, 0.08, 0.1))))
 
         sg = dr.PlasticSurface(name="g", kd=dr.ColorTexture((0.5, 0.52, 0.55, 1.0)), roughness=dr.ColorTexture((0.9,)))
@@ -113,7 +113,7 @@ def main() -> int:
         dr.destroy()
 
     if not args.quiet:
-        print("week10_dynamic_geometry_smoke passed.")
+        print("dynamic_geometry_smoke passed.")
     return 0
 
 

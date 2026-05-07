@@ -79,7 +79,7 @@ def main() -> int:
                 raise AssertionError(img.shape)
 
     if not args.quiet:
-        print("week10_genesis_dynamic_smoke passed.")
+        print("genesis_dynamic_geometry_smoke passed.")
     return 0
 
 
