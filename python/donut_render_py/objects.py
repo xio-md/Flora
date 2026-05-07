@@ -343,7 +343,8 @@ class ParticlesShape(Shape):
         self.centers = np.empty((0, 3), dtype=np.float32)
         self.radii = np.empty((0,), dtype=np.float32)
         if centers is not None:
-            self.update(centers, radii or [])
+            radii_arg: Sequence[float] = [] if radii is None else radii
+            self.update(centers, radii_arg)
 
     def update(
         self,

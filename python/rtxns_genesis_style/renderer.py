@@ -65,6 +65,25 @@ def _coerce_triangles(triangles: Any) -> np.ndarray:
     return np.ascontiguousarray(array.astype(np.uint32))
 
 
+_PARTICLE_RADIUS_MIN = 1.0e-5
+_PARTICLE_RADIUS_MAX = 1.0e3
+
+
+def _validate_finite_xyz(array: np.ndarray, *, label: str) -> None:
+    if array.size == 0:
+        return
+    if not np.isfinite(array).all():
+        raise ValueError(f"{label} contains non-finite values (NaN or Inf).")
+
+
+def _validate_triangle_indices(triangles: np.ndarray, vertex_count: int) -> None:
+    if triangles.size == 0 or vertex_count <= 0:
+        return
+    max_idx = int(np.max(triangles))
+    if max_idx >= vertex_count:
+        raise ValueError(f"Triangle index {max_idx} is out of range for {vertex_count} vertices.")
+
+
 def _coerce_normals(normals: Any, vertex_count: int) -> np.ndarray:
     if normals is None:
         return np.empty((0, 3), dtype=np.float32)
@@ -872,6 +891,9 @@ class GenesisStyleRenderer:
             normal_array = _compute_vertex_normals(vertex_array, triangle_array)
         uv_array = _coerce_uvs(uvs, vertex_array.shape[0])
 
+        _validate_finite_xyz(vertex_array, label="Deformable vertices")
+        _validate_triangle_indices(triangle_array, vertex_array.shape[0])
+
         record.kind = "deformable"
         record.vertices = vertex_array
         record.triangles = triangle_array
@@ -903,6 +925,7 @@ class GenesisStyleRenderer:
             self.add_particles(name, radius=radius)
 
         centers = _coerce_vertices(particles)
+        _validate_finite_xyz(centers, label="Particle centers")
         record = self._shapes[shape_name]
         if particles_radii is None:
             particle_radius = float(radius if radius is not None else record.particle_radius)
@@ -912,6 +935,10 @@ class GenesisStyleRenderer:
             if radii.size != centers.shape[0]:
                 raise ValueError("particles_radii must have the same length as particles.")
             particle_radius = float(radius if radius is not None else (float(radii[0]) if radii.size > 0 else 0.05))
+
+        radii = np.clip(np.asarray(radii, dtype=np.float32), _PARTICLE_RADIUS_MIN, _PARTICLE_RADIUS_MAX)
+        if not np.isfinite(radii).all():
+            raise ValueError("Particle radii must be finite.")
 
         record.kind = "particles"
         record.particle_centers = np.ascontiguousarray(centers)
