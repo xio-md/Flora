@@ -9,7 +9,8 @@ build/*
 external/slang/windows-x64/release/slang-stdlib.bin
 /external/dx12-agility-sdk
 /external/nvapi
-/docs
+/docs/*
+!/docs/RTXNS_Summer_SlangNeural_12Week_Plan.md
 
 
 # Temp files from running Python sample.
