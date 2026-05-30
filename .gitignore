@@ -11,6 +11,7 @@ external/slang/windows-x64/release/slang-stdlib.bin
 /external/nvapi
 /docs/*
 !/docs/RTXNS_Summer_SlangNeural_12Week_Plan.md
+!/docs/RTXNS_LiDAR_Output_Feasibility_Study.md
 
 
 # Temp files from running Python sample.

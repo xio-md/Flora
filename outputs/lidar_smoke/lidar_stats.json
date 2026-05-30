@@ -1,0 +1,106 @@
+{
+  "mesh_path": "D:\\xmd\\Genesis\\genesis\\assets\\meshes\\duck\\duck.obj",
+  "mesh_loader": "open3d.io",
+  "raycast_backend": "open3d.RaycastingScene",
+  "ray_count": 393216,
+  "valid_hit_count": 86538,
+  "hit_ratio": 0.2200775146484375,
+  "min_range": 337.7461853027344,
+  "max_observed_range": 607.3282470703125,
+  "mean_range": 423.4248046875,
+  "channels": 32,
+  "horizontal_steps": 1024,
+  "scan_mode": "object_orbit",
+  "orbit_poses": 12,
+  "horizontal_fov_degrees": 70.0,
+  "vertical_fov_degrees": [
+    -25.0,
+    25.0
+  ],
+  "max_range": 829.9843750000001,
+  "sensor_origin": [
+    0.0,
+    87.83533477783203,
+    -513.8701782226562
+  ],
+  "sensor_origins": [
+    [
+      0.0,
+      87.83533477783203,
+      -513.8701782226562
+    ],
+    [
+      256.9350891113281,
+      87.83533477783203,
+      -445.0246276855469
+    ],
+    [
+      445.0246276855469,
+      87.83533477783203,
+      -256.9350891113281
+    ],
+    [
+      513.8701782226562,
+      87.83533477783203,
+      -3.14654715043855e-14
+    ],
+    [
+      445.0246276855469,
+      87.83533477783203,
+      256.9350891113281
+    ],
+    [
+      256.9350891113281,
+      87.83533477783203,
+      445.0246276855469
+    ],
+    [
+      6.2930943008771e-14,
+      87.83533477783203,
+      513.8701782226562
+    ],
+    [
+      -256.9350891113281,
+      87.83533477783203,
+      445.0246276855469
+    ],
+    [
+      -445.0246276855469,
+      87.83533477783203,
+      256.9350891113281
+    ],
+    [
+      -513.8701782226562,
+      87.83533477783203,
+      9.439642128942008e-14
+    ],
+    [
+      -445.0246276855469,
+      87.83533477783203,
+      -256.9350891113281
+    ],
+    [
+      -256.9350891113281,
+      87.83533477783203,
+      -445.0246276855469
+    ]
+  ],
+  "runtime_ms": 1625.6253002211452,
+  "outputs": {
+    "point_cloud": "D:\\xmd\\RTXNS\\outputs\\lidar_smoke\\lidar_points.ply",
+    "range_image": "D:\\xmd\\RTXNS\\outputs\\lidar_smoke\\range_image.png",
+    "bev": "D:\\xmd\\RTXNS\\outputs\\lidar_smoke\\bev.png",
+    "bev_top": "D:\\xmd\\RTXNS\\outputs\\lidar_smoke\\bev_top.png",
+    "bev_front": "D:\\xmd\\RTXNS\\outputs\\lidar_smoke\\bev_front.png",
+    "bev_side": "D:\\xmd\\RTXNS\\outputs\\lidar_smoke\\bev_side.png",
+    "bev_iso": "D:\\xmd\\RTXNS\\outputs\\lidar_smoke\\bev_iso.png"
+  },
+  "limitations": [
+    "sidecar mesh raycasting only",
+    "no intensity",
+    "no noise model",
+    "no motion distortion",
+    "no semantic label",
+    "not integrated into RTXNS native renderer"
+  ]
+}
