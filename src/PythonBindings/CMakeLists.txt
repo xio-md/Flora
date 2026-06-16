@@ -37,7 +37,8 @@ target_include_directories(${RTXNS_DONUT_RENDER_RUNTIME_TARGET}
 target_link_libraries(${RTXNS_DONUT_RENDER_RUNTIME_TARGET}
     PRIVATE
         donut_app
-        donut_render)
+        donut_render
+        rtxns_ray_traced_shadow)
 
 set_target_properties(${RTXNS_DONUT_RENDER_RUNTIME_TARGET} PROPERTIES
     POSITION_INDEPENDENT_CODE ON

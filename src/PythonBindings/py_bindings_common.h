@@ -44,6 +44,9 @@ inline void bind_rtxns_headless_pbr_module(py::module_ &m)
             &rtxns::python::HeadlessPbrScene::update_node_transform,
             py::arg("name"),
             py::arg("matrix_values"))
+        .def("enable_rt_shadows",
+            &rtxns::python::HeadlessPbrScene::enable_rt_shadows,
+            py::arg("enable"))
         .def("render_frame",
             [](rtxns::python::HeadlessPbrScene &self)
             {

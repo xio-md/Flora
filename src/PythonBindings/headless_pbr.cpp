@@ -21,6 +21,10 @@
 #include <donut/render/GeometryPasses.h>
 #include <nvrhi/utils.h>
 
+#include "../RayTracedShadow/RayTracedShadowPass.h"
+#include "../RayTracedShadow/SceneGeometryProvider.h"
+#include "../RayTracedShadow/AccelerationStructure.h"
+
 namespace rtxns::python
 {
     using donut::app::DeviceManager;
@@ -108,6 +112,7 @@ namespace rtxns::python
             device_params.adapterIndex = options.device_index;
             device_params.enableDebugRuntime = options.enable_debug;
             device_params.enableNvrhiValidationLayer = options.enable_debug;
+            device_params.enableRayTracingExtensions = true;
             device_params.maxFramesInFlight = 1;
             device_params.swapChainFormat = nvrhi::Format::SRGBA8_UNORM;
 
@@ -242,6 +247,14 @@ namespace rtxns::python
             }
 
             m_frame_index = 0;
+            m_scene->RefreshSceneGraph(m_frame_index);
+            m_shadowSceneResources = rtxns::shadow::SceneGeometryProvider::buildShadowSceneResources(
+                device, *m_scene->GetSceneGraph());
+            if (m_rtShadowPass && m_shadowSceneResources.instanceCount > 0)
+            {
+                m_rtShadowPass->setSceneResources(device, m_shadowSceneResources);
+            }
+
             m_scene->FinishedLoading(m_frame_index);
         }
 
@@ -380,6 +393,31 @@ namespace rtxns::python
             node->SetTransform(&translation, &rotation, &scaling);
         }
 
+        void enable_rt_shadows(bool enable)
+        {
+            m_rtShadowsEnabled = enable;
+            if (enable && !m_rtShadowPass && m_context)
+            {
+                m_rtShadowPass = std::make_unique<rtxns::shadow::RayTracedShadowPass>();
+                m_rtShadowPass->initialize(
+                    m_context->device(),
+                    m_context->shader_factory().get(),
+                    m_width,
+                    m_height);
+            }
+            if (enable && m_rtShadowPass && m_shadowSceneResources.instanceCount > 0)
+            {
+                m_rtShadowPass->setSceneResources(
+                    m_context->device(),
+                    m_shadowSceneResources);
+            }
+            if (!enable)
+            {
+                m_shadowAS = {};
+                m_blasInputs.clear();
+            }
+        }
+
         [[nodiscard]] std::vector<uint8_t> render_frame()
         {
             if (!m_scene)
@@ -436,11 +474,189 @@ namespace rtxns::python
                 pass_context,
                 "Transparent");
 
-            command_list->setTextureState(m_color_target, nvrhi::AllSubresources, nvrhi::ResourceStates::CopySource);
-            command_list->commitBarriers();
-            command_list->copyTexture(m_readback_target, nvrhi::TextureSlice(), m_color_target, nvrhi::TextureSlice());
-            command_list->setTextureState(m_color_target, nvrhi::AllSubresources, nvrhi::ResourceStates::RenderTarget);
-            command_list->commitBarriers();
+            // ---- RT Shadow Pass ----
+            bool useRTShadow = m_rtShadowsEnabled && m_rtShadowPass && m_rtShadowPass->isValid();
+
+            if (useRTShadow)
+            {
+                // Build acceleration structures on first frame
+                if (!m_shadowAS.built)
+                {
+                    m_blasInputs = rtxns::shadow::SceneGeometryProvider::extractFromScene(
+                        *m_scene->GetSceneGraph());
+
+                    // Build BLASes first, then we have handles for instance creation
+                    if (!m_blasInputs.empty())
+                    {
+                        m_shadowAS.blasList = rtxns::shadow::AccelerationStructure::buildBLASes(
+                            device, m_blasInputs);
+
+                        auto instances = rtxns::shadow::AccelerationStructure::buildInstanceDescs(
+                            *m_scene->GetSceneGraph(),
+                            m_shadowAS.blasList,
+                            m_blasInputs);
+                        m_shadowAS.instances = instances;
+
+                        // Build TLAS
+                        if (!instances.empty())
+                        {
+                            auto cmdListTLAS = device->createCommandList();
+                            cmdListTLAS->open();
+
+                            nvrhi::rt::AccelStructDesc tlasDesc;
+                            tlasDesc.setTopLevelMaxInstances(instances.size());
+                            tlasDesc.setBuildFlags(
+                                nvrhi::rt::AccelStructBuildFlags::PreferFastTrace |
+                                nvrhi::rt::AccelStructBuildFlags::AllowUpdate);
+                            tlasDesc.setDebugName("TLAS");
+
+                            m_shadowAS.tlas = device->createAccelStruct(tlasDesc);
+                            if (m_shadowAS.tlas)
+                            {
+                                cmdListTLAS->buildTopLevelAccelStruct(
+                                    m_shadowAS.tlas,
+                                    instances.data(),
+                                    instances.size(),
+                                    nvrhi::rt::AccelStructBuildFlags::PreferFastTrace);
+                            }
+
+                            cmdListTLAS->close();
+                            device->executeCommandList(cmdListTLAS);
+                            device->waitForIdle();
+
+                            m_shadowAS.built = m_shadowAS.tlas != nullptr;
+                        }
+                    }
+                } else {
+                    // Per-frame TLAS update
+                    auto instances = rtxns::shadow::AccelerationStructure::buildInstanceDescs(
+                        *m_scene->GetSceneGraph(),
+                        m_shadowAS.blasList,
+                        m_blasInputs);
+                    m_shadowAS.instances = instances;
+
+                    rtxns::shadow::AccelerationStructure::updateTLAS(
+                        command_list, m_shadowAS, instances);
+                }
+
+                if (m_shadowAS.tlas)
+                {
+                    // Get light direction from the first scene light
+                    dm::float3 sunDir = dm::normalize(dm::float3(1.0f, 1.0f, 0.5f));  // towards the light by default
+                    if (!m_scene->GetSceneGraph()->GetLights().empty())
+                    {
+                        auto firstLight = m_scene->GetSceneGraph()->GetLights().front();
+                        if (auto dirLight = std::dynamic_pointer_cast<DirectionalLight>(firstLight))
+                        {
+                            // Donut stores directional light travel direction; shadow rays need direction to light.
+                            dm::float3 lightDir = dm::float3(
+                                float(dirLight->GetDirection().x),
+                                float(dirLight->GetDirection().y),
+                                float(dirLight->GetDirection().z));
+                            sunDir = dm::normalize(-lightDir);
+                        }
+                    }
+
+                    rtxns::shadow::ShadowConstants shadowConstants;
+                    shadowConstants.sunDirection = sunDir;
+                    shadowConstants.sunJitter = 0.0f;
+                    shadowConstants.invViewProj = m_view.GetInverseViewProjectionMatrix();
+                    shadowConstants.invProj = m_view.GetInverseProjectionMatrix(false);
+                    shadowConstants.invView = dm::affineToHomogeneous(m_view.GetInverseViewMatrix());
+                    shadowConstants.projParams = dm::float2(m_z_near, m_z_far);
+                    shadowConstants.imageSize = dm::float2(float(m_width), float(m_height));
+                    shadowConstants.shadowEnabled = 1;
+                    shadowConstants.shadowRayMask = 0xFFu;
+
+                    // Zero the shadow target before dispatch
+                    nvrhi::Color clearBlack(0.0f, 0.0f, 0.0f, 0.0f);
+                    command_list->clearTextureFloat(m_shadowTarget,
+                        nvrhi::AllSubresources, clearBlack);
+
+                    m_rtShadowPass->renderShadow(
+                        command_list,
+                        m_shadowAS.tlas,
+                        shadowConstants,
+                        m_depth_target,
+                        m_shadowTarget);
+                }
+            }
+
+            if (!m_rtShadowPass && m_context)
+            {
+                m_rtShadowPass = std::make_unique<rtxns::shadow::RayTracedShadowPass>();
+                m_rtShadowPass->initialize(
+                    m_context->device(),
+                    m_context->shader_factory().get(),
+                    m_width,
+                    m_height);
+            }
+
+            if (!useRTShadow && m_shadowTarget)
+            {
+                command_list->setTextureState(m_shadowTarget, nvrhi::AllSubresources,
+                    nvrhi::ResourceStates::UnorderedAccess);
+                command_list->commitBarriers();
+                nvrhi::Color clearWhite(1.0f, 1.0f, 1.0f, 1.0f);
+                command_list->clearTextureFloat(m_shadowTarget,
+                    nvrhi::AllSubresources, clearWhite);
+            }
+
+            if (m_rtShadowPass && m_rtShadowPass->isValid())
+            {
+                // Copy lit color to SRV-compatible texture
+                command_list->setTextureState(m_color_target, nvrhi::AllSubresources,
+                    nvrhi::ResourceStates::CopySource);
+                command_list->setTextureState(m_litColorSRV, nvrhi::AllSubresources,
+                    nvrhi::ResourceStates::CopyDest);
+                command_list->commitBarriers();
+                command_list->copyTexture(m_litColorSRV, nvrhi::TextureSlice(),
+                    m_color_target, nvrhi::TextureSlice());
+                command_list->setTextureState(m_litColorSRV, nvrhi::AllSubresources,
+                    nvrhi::ResourceStates::ShaderResource);
+                command_list->setTextureState(m_color_target, nvrhi::AllSubresources,
+                    nvrhi::ResourceStates::RenderTarget);
+                command_list->commitBarriers();
+
+                // Composite: litColor * shadow -> tonemapped output.
+                if (!m_shadowAS.tlas && m_shadowTarget)
+                {
+                    // No TLAS yet (or first frame building): use fully lit shadow
+                    nvrhi::Color clearWhite(1.0f, 1.0f, 1.0f, 1.0f);
+                    command_list->clearTextureFloat(m_shadowTarget,
+                        nvrhi::AllSubresources, clearWhite);
+                }
+
+                m_rtShadowPass->compositeShadow(
+                    command_list,
+                    m_litColorSRV,
+                    m_shadowTarget,
+                    m_compositeOutput,
+                    m_width,
+                    m_height);
+
+                // Copy composite output to readback staging
+                command_list->setTextureState(m_compositeOutput, nvrhi::AllSubresources,
+                    nvrhi::ResourceStates::CopySource);
+                command_list->commitBarriers();
+                command_list->copyTexture(m_readback_target, nvrhi::TextureSlice(),
+                    m_compositeOutput, nvrhi::TextureSlice());
+                command_list->setTextureState(m_compositeOutput, nvrhi::AllSubresources,
+                    nvrhi::ResourceStates::UnorderedAccess);
+                command_list->commitBarriers();
+            }
+            else
+            {
+                // Original flow: copy color → readback
+                command_list->setTextureState(m_color_target, nvrhi::AllSubresources,
+                    nvrhi::ResourceStates::CopySource);
+                command_list->commitBarriers();
+                command_list->copyTexture(m_readback_target, nvrhi::TextureSlice(),
+                    m_color_target, nvrhi::TextureSlice());
+                command_list->setTextureState(m_color_target, nvrhi::AllSubresources,
+                    nvrhi::ResourceStates::RenderTarget);
+                command_list->commitBarriers();
+            }
 
             command_list->close();
             device->executeCommandList(command_list);
@@ -448,7 +664,8 @@ namespace rtxns::python
 
             size_t row_pitch = 0;
             const auto* mapped = static_cast<const uint8_t*>(
-                device->mapStagingTexture(m_readback_target, nvrhi::TextureSlice(), nvrhi::CpuAccessMode::Read, &row_pitch));
+                device->mapStagingTexture(m_readback_target, nvrhi::TextureSlice(),
+                    nvrhi::CpuAccessMode::Read, &row_pitch));
             if (!mapped)
             {
                 throw std::runtime_error("Failed to map the readback texture.");
@@ -515,10 +732,17 @@ namespace rtxns::python
             color_desc.height = height;
             color_desc.dimension = nvrhi::TextureDimension::Texture2D;
             color_desc.debugName = "DonutRenderPy/Color";
-            color_desc.format = nvrhi::Format::SRGBA8_UNORM;
+            color_desc.format = nvrhi::Format::RGBA16_FLOAT;
             color_desc.isRenderTarget = true;
             color_desc.initialState = nvrhi::ResourceStates::RenderTarget;
             color_desc.keepInitialState = true;
+
+            nvrhi::TextureDesc output_desc;
+            output_desc.width = width;
+            output_desc.height = height;
+            output_desc.dimension = nvrhi::TextureDimension::Texture2D;
+            output_desc.debugName = "DonutRenderPy/Output";
+            output_desc.format = nvrhi::Format::RGBA8_UNORM;
 
             nvrhi::TextureDesc depth_desc;
             depth_desc.width = width;
@@ -532,7 +756,42 @@ namespace rtxns::python
 
             m_color_target = device->createTexture(color_desc);
             m_depth_target = device->createTexture(depth_desc);
-            m_readback_target = device->createStagingTexture(color_desc, nvrhi::CpuAccessMode::Read);
+            m_readback_target = device->createStagingTexture(output_desc, nvrhi::CpuAccessMode::Read);
+
+            // Shadow target: R8_UNORM, UAV-compatible
+            nvrhi::TextureDesc shadow_desc;
+            shadow_desc.width = width;
+            shadow_desc.height = height;
+            shadow_desc.dimension = nvrhi::TextureDimension::Texture2D;
+            shadow_desc.debugName = "DonutRenderPy/Shadow";
+            shadow_desc.format = nvrhi::Format::R8_UNORM;
+            shadow_desc.isUAV = true;
+            shadow_desc.initialState = nvrhi::ResourceStates::UnorderedAccess;
+            shadow_desc.keepInitialState = true;
+            m_shadowTarget = device->createTexture(shadow_desc);
+
+            // SRV-compatible copy of the color target (RenderTarget-only textures can't be SRV)
+            nvrhi::TextureDesc lit_srv_desc;
+            lit_srv_desc.width = width;
+            lit_srv_desc.height = height;
+            lit_srv_desc.dimension = nvrhi::TextureDimension::Texture2D;
+            lit_srv_desc.debugName = "DonutRenderPy/LitColorSRV";
+            lit_srv_desc.format = nvrhi::Format::RGBA16_FLOAT;
+            lit_srv_desc.initialState = nvrhi::ResourceStates::ShaderResource;
+            lit_srv_desc.keepInitialState = true;
+            m_litColorSRV = device->createTexture(lit_srv_desc);
+
+            // Composite output: tonemapped RGBA8_UNORM, UAV-compatible for compute write.
+            nvrhi::TextureDesc composite_desc;
+            composite_desc.width = width;
+            composite_desc.height = height;
+            composite_desc.dimension = nvrhi::TextureDimension::Texture2D;
+            composite_desc.debugName = "DonutRenderPy/CompositeOutput";
+            composite_desc.format = nvrhi::Format::RGBA8_UNORM;
+            composite_desc.isUAV = true;
+            composite_desc.initialState = nvrhi::ResourceStates::UnorderedAccess;
+            composite_desc.keepInitialState = true;
+            m_compositeOutput = device->createTexture(composite_desc);
 
             m_framebuffer_factory = std::make_shared<FramebufferFactory>(device);
             m_framebuffer_factory->RenderTargets = {m_color_target};
@@ -551,6 +810,16 @@ namespace rtxns::python
         PlanarView m_view;
         donut::app::FirstPersonCamera m_camera;
         std::shared_ptr<DirectionalLight> m_default_light;
+
+        // RT shadow members
+        bool m_rtShadowsEnabled = false;
+        std::unique_ptr<rtxns::shadow::RayTracedShadowPass> m_rtShadowPass;
+        nvrhi::TextureHandle m_shadowTarget;
+        nvrhi::TextureHandle m_compositeOutput;
+        nvrhi::TextureHandle m_litColorSRV;
+        rtxns::shadow::ShadowAccelStructures m_shadowAS;
+        rtxns::shadow::ShadowSceneResources m_shadowSceneResources;  // alpha-test metadata
+        std::vector<rtxns::shadow::MeshBLASInput> m_blasInputs;
 
         dm::float3 m_ambient_top = dm::float3(0.03f, 0.04f, 0.06f);
         dm::float3 m_ambient_bottom = dm::float3(0.01f, 0.01f, 0.01f);
@@ -618,6 +887,11 @@ namespace rtxns::python
         const std::vector<float>& matrix_values)
     {
         m_impl->update_node_transform(name, matrix_values);
+    }
+
+    void HeadlessPbrScene::enable_rt_shadows(bool enable)
+    {
+        m_impl->enable_rt_shadows(enable);
     }
 
     std::vector<uint8_t> HeadlessPbrScene::render_frame()

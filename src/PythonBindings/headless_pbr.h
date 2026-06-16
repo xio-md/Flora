@@ -46,6 +46,8 @@ namespace rtxns::python
             const std::string& name,
             const std::vector<float>& matrix_values);
 
+        void enable_rt_shadows(bool enable);
+
         [[nodiscard]] std::vector<uint8_t> render_frame();
         [[nodiscard]] uint32_t width() const noexcept;
         [[nodiscard]] uint32_t height() const noexcept;
