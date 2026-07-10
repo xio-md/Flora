@@ -1,5 +1,6 @@
 #include "AccelerationStructure.h"
 #include "SceneGeometryProvider.h"
+#include "OMMBaker.h"
 #include <donut/core/math/affine.h>
 #include <donut/engine/SceneGraph.h>
 #include <nvrhi/utils.h>
@@ -53,6 +54,8 @@ std::vector<BuiltBLAS> AccelerationStructure::buildBLASes(
         std::vector<nvrhi::rt::GeometryDesc> geometryDescs;
         geometryDescs.reserve(input.geometries.size());
 
+        uint32_t ommTriangleBase = 0; // cumulative triangle count for OMM index offset
+
         for (const auto& geom : input.geometries)
         {
             nvrhi::rt::GeometryTriangles triangles;
@@ -66,12 +69,28 @@ std::vector<BuiltBLAS> AccelerationStructure::buildBLASes(
             triangles.vertexCount = geom.vertexCount;
             triangles.vertexStride = sizeof(dm::float3);
 
+            // Attach OMM if available for this mesh
+            if (input.opacityMicromap && input.ommIndexBuffer)
+            {
+                triangles.opacityMicromap = input.opacityMicromap;
+                triangles.ommIndexBuffer = input.ommIndexBuffer;
+                // Calculate per-geometry OMM index offset based on cumulative triangle count
+                triangles.ommIndexBufferOffset = input.ommIndexBufferOffset + ommTriangleBase * 4; // 4 = sizeof(uint32_t)
+                // OMM index format matches index buffer: R32 for UINT_32
+                triangles.ommIndexFormat = nvrhi::Format::R32_UINT;
+                triangles.pOmmUsageCounts = input.ommUsageCounts.data();
+                triangles.numOmmUsageCounts = static_cast<uint32_t>(input.ommUsageCounts.size());
+            }
+
             nvrhi::rt::GeometryDesc geoDesc;
             geoDesc.geometryType = nvrhi::rt::GeometryType::Triangles;
             geoDesc.geometryData.triangles = triangles;
-            if (!geom.isTransparent)
+            if (!geom.isTransparent && !input.forceNonOpaque)
                 geoDesc.setFlags(nvrhi::rt::GeometryFlags::Opaque);
             geometryDescs.push_back(geoDesc);
+
+            // Accumulate triangle count for OMM index offset calculation
+            ommTriangleBase += geom.indexCount / 3;
         }
 
         if (geometryDescs.empty())
@@ -269,9 +288,19 @@ std::vector<nvrhi::rt::InstanceDesc> AccelerationStructure::buildInstanceDescs(
                                 hasTransparentGeometry |= geom.isTransparent;
                                 hasAlphaTestedGeometry |= geom.isAlphaTested;
                             }
-                            instance.setInstanceMask(hasAlphaTestedGeometry ? 0xFE : 0x01);
+                            // All instances use mask 0xFF so shadow rays (mask 0xFF) can hit every
+                            // caster. Self-occlusion of the receiver surface is avoided by the ray
+                            // origin bias in the shader (wpos + sunDir * kBias), not by instance masks.
+                            // The opaque/alpha-tested distinction is handled at the BLAS geometry
+                            // level (GeometryFlags::Opaque) and instance level (ForceOpaque), so masks
+                            // are not used to separate caster/receiver.
+                            instance.setInstanceMask(0xFF);
+                            auto flags = nvrhi::rt::InstanceFlags::None;
                             if (!hasTransparentGeometry)
-                                instance.setFlags(nvrhi::rt::InstanceFlags::ForceOpaque);
+                                flags = nvrhi::rt::InstanceFlags::ForceOpaque;
+                            if (hasAlphaTestedGeometry && blasInputs[bi].opacityMicromap)
+                                flags = flags | nvrhi::rt::InstanceFlags::ForceOMM2State;
+                            instance.setFlags(flags);
 
                             instances.push_back(instance);
                         }

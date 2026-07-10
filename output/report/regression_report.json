@@ -1,0 +1,58 @@
+[
+  {
+    "scene": "genesis",
+    "pass": true,
+    "dark_ratio": 0.282705823948998,
+    "non_shadow_max_diff": 16.0,
+    "stats_no_shadow": {
+      "total_ms": 3.8959,
+      "raster_ms": 2.909,
+      "blas_build_ms": 0.0,
+      "tlas_build_ms": 0.0,
+      "shadow_ray_ms": 0.0,
+      "composite_ms": 0.0388,
+      "readback_ms": 0.6199,
+      "rt_shadows_enabled": false,
+      "as_built_this_frame": false
+    },
+    "stats_rt_shadow": {
+      "total_ms": 4.1133,
+      "raster_ms": 0.0465,
+      "blas_build_ms": 3.242,
+      "tlas_build_ms": 0.0,
+      "shadow_ray_ms": 0.132,
+      "composite_ms": 0.0102,
+      "readback_ms": 0.4924,
+      "rt_shadows_enabled": true,
+      "as_built_this_frame": true
+    }
+  },
+  {
+    "scene": "bistro",
+    "pass": true,
+    "dark_ratio": 26.707508506359616,
+    "non_shadow_max_diff": 21.0,
+    "stats_no_shadow": {
+      "total_ms": 6.795,
+      "raster_ms": 5.3458,
+      "blas_build_ms": 0.0,
+      "tlas_build_ms": 0.0,
+      "shadow_ray_ms": 0.0,
+      "composite_ms": 0.0322,
+      "readback_ms": 0.8622,
+      "rt_shadows_enabled": false,
+      "as_built_this_frame": false
+    },
+    "stats_rt_shadow": {
+      "total_ms": 171.076,
+      "raster_ms": 0.0807,
+      "blas_build_ms": 168.8953,
+      "tlas_build_ms": 0.0,
+      "shadow_ray_ms": 0.3979,
+      "composite_ms": 0.0074,
+      "readback_ms": 1.1394,
+      "rt_shadows_enabled": true,
+      "as_built_this_frame": true
+    }
+  }
+]

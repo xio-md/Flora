@@ -19,6 +19,28 @@ StructuredBuffer<ShadowConstants>     t_shadowConstants : register(t263);
 
 static const uint c_SizeOfInterleavedVertex = 20; // float3(12) + float2(8) per vertex
 
+// ---------------------------------------------------------------------------
+// Multi-sample sun jitter: each pixel shoots N rays with the sun direction
+// perturbed by a small angular offset in the tangent plane. This produces a
+// distance-dependent (contact-hardening) penumbra that matches the physical
+// behaviour of an extended light source.
+// ---------------------------------------------------------------------------
+// SHADOW_SAMPLES is now runtime: c_shadow.shadowSamples (default 4)
+
+// PCG-style hash: returns pseudo-random float in [0, 1)
+float hash(uint n)
+{
+    n = (n << 13U) ^ n;
+    n = n * (n * n * 15731U + 789221U) + 1376312589U;
+    return float(n & 0x7FFFFFFFu) / float(0x7FFFFFFFu);
+}
+
+float2 hash2(uint x, uint y)
+{
+    uint k = x * 1664525U + y * 1013904223U;
+    return float2(hash(k), hash(k ^ 0xDEADBEEFu));
+}
+
 float3 ReconstructWorldPosition(uint2 pixel, float depth)
 {
     float2 pixelPosition = float2(pixel) + 0.5f;
@@ -66,35 +88,20 @@ bool AlphaTestCandidate(uint instanceID, uint geometryIndex, uint primitiveIndex
     return alpha >= mat.alphaCutoff;
 }
 
-[numthreads(8, 8, 1)]
-void main(uint3 idx : SV_DispatchThreadID)
+// Trace a single shadow ray with the given direction; returns 1.0f = lit, 0.0f = shadowed.
+float TraceShadowRay(float3 origin, float3 direction)
 {
-    if (c_shadow.shadowEnabled == 0 ||
-        idx.x >= (uint)c_shadow.imageSize.x ||
-        idx.y >= (uint)c_shadow.imageSize.y)
-        return;
-
-    float depth = t_depth[idx.xy];
-    if (depth >= 1.0f) { u_shadow[idx.xy] = 1.0f; return; }
-
-    float3 wpos = ReconstructWorldPosition(idx.xy, depth);
     RayDesc ray;
-    ray.Origin = wpos + c_shadow.sunDirection * 0.05f;
-    ray.Direction = c_shadow.sunDirection;
-    ray.TMin = 0.01f; ray.TMax = 1000.0f;
+    ray.Origin = origin;
+    ray.Direction = direction;
+    ray.TMin = 0.01f;
+    ray.TMax = 1000.0f;
 
-    // Opaque geometry auto-commits via GeometryFlags::Opaque in BLAS
-    // Non-opaque (alpha-tested) geometry appears as candidates
     RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> query;
     query.TraceRayInline(Scene, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, c_shadow.shadowRayMask, ray);
 
-    float shadow = 1.0f;
-    uint iterCount = 0;
-    const uint kMaxIter = 8;
-
-    while (iterCount < kMaxIter && query.Proceed())
+    while (query.Proceed())
     {
-        iterCount++;
         if (query.CandidateType() == CANDIDATE_NON_OPAQUE_TRIANGLE)
         {
             uint instanceID = query.CandidateInstanceID();
@@ -109,9 +116,60 @@ void main(uint3 idx : SV_DispatchThreadID)
         }
     }
 
-    // Check committed hit (opaque auto-commit or confirmed non-opaque)
-    if (query.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
-        shadow = 0.0f;
+    return (query.CommittedStatus() == COMMITTED_TRIANGLE_HIT) ? 0.0f : 1.0f;
+}
 
-    u_shadow[idx.xy] = shadow;
+[numthreads(8, 8, 1)]
+void main(uint3 idx : SV_DispatchThreadID)
+{
+    if (c_shadow.shadowEnabled == 0 ||
+        idx.x >= (uint)c_shadow.imageSize.x ||
+        idx.y >= (uint)c_shadow.imageSize.y)
+        return;
+
+    float depth = t_depth[idx.xy];
+    if (depth >= 1.0f) { u_shadow[idx.xy] = 1.0f; return; }
+
+    float3 wpos = ReconstructWorldPosition(idx.xy, depth);
+    float3 sunDir = c_shadow.sunDirection;
+    float jitter = c_shadow.sunJitter;
+
+    // Fast path: no jitter → single ray (backward-compatible)
+    if (jitter <= 0.0f)
+    {
+        u_shadow[idx.xy] = TraceShadowRay(wpos + sunDir * 0.05f, sunDir);
+        return;
+    }
+
+    // Build orthonormal basis from sun direction for jitter in tangent plane.
+    float3 tangent, bitangent;
+    if (abs(sunDir.y) > 0.999f)
+    {
+        tangent = float3(1.0f, 0.0f, 0.0f);
+        bitangent = float3(0.0f, 0.0f, -1.0f);
+    }
+    else
+    {
+        tangent = normalize(cross(float3(0.0f, 1.0f, 0.0f), sunDir));
+        bitangent = cross(sunDir, tangent);
+    }
+
+    uint samples = max(1u, c_shadow.shadowSamples);
+    float shadowAccum = 0.0f;
+    for (uint s = 0; s < samples; ++s)
+    {
+        // Per-sample pseudo-random: pixel index seeded by sample index
+        float2 rnd = hash2(idx.x + s * 137u, idx.y + s * 251u);
+
+        // Uniform disk sampling in tangent plane → angular perturbation
+        float theta = 6.2831853f * rnd.x; // 2*PI
+        float r = sqrt(rnd.y) * jitter;
+        float3 perturb = tangent * (r * cos(theta)) + bitangent * (r * sin(theta));
+        float3 rayDir = normalize(sunDir + perturb);
+
+        float3 origin = wpos + rayDir * 0.05f;
+        shadowAccum += TraceShadowRay(origin, rayDir);
+    }
+
+    u_shadow[idx.xy] = shadowAccum / float(samples);
 }

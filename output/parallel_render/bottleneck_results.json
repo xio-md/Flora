@@ -1,0 +1,307 @@
+[
+  {
+    "num_workers": 1,
+    "wall_clock_s": 2.6838250160217285,
+    "steady_throughput_fps": 300.3063704870496,
+    "avg_worker_fps": 300.3063704870496,
+    "avg_call_wall_ms": 3.329932689666748,
+    "avg_gpu_total_ms": 2.95031,
+    "avg_cpu_overhead_ms": 0.37962268966674806,
+    "gpu_stats": {
+      "avg_util": 14.0,
+      "peak_util": 14,
+      "avg_vram_mb": 1336.0,
+      "peak_vram_mb": 1336,
+      "num_samples": 1
+    },
+    "results": [
+      {
+        "worker_id": 0,
+        "angle": 0.0,
+        "fps": 300.3063704870496,
+        "call_wall_ms": 3.329932689666748,
+        "gpu_total_ms": 2.95031,
+        "cpu_overhead_ms": 0.37962268966674806,
+        "mean_pixel": 78.36545011732314,
+        "error": ""
+      }
+    ],
+    "speedup": 1.0
+  },
+  {
+    "num_workers": 2,
+    "wall_clock_s": 2.0013675689697266,
+    "steady_throughput_fps": 494.89485117790923,
+    "avg_worker_fps": 247.44742558895462,
+    "avg_call_wall_ms": 4.196023941040039,
+    "avg_gpu_total_ms": 3.72704,
+    "avg_cpu_overhead_ms": 0.46898394104003893,
+    "gpu_stats": {
+      "avg_util": 2.0,
+      "peak_util": 2,
+      "avg_vram_mb": 1330.0,
+      "peak_vram_mb": 1330,
+      "num_samples": 1
+    },
+    "results": [
+      {
+        "worker_id": 0,
+        "angle": 0.0,
+        "fps": 294.9694960072295,
+        "call_wall_ms": 3.390181064605713,
+        "gpu_total_ms": 3.014475,
+        "cpu_overhead_ms": 0.3757060646057129,
+        "mean_pixel": 78.36533991495769,
+        "error": ""
+      },
+      {
+        "worker_id": 1,
+        "angle": 180.0,
+        "fps": 199.92535517067975,
+        "call_wall_ms": 5.001866817474365,
+        "gpu_total_ms": 4.439605,
+        "cpu_overhead_ms": 0.562261817474365,
+        "mean_pixel": 92.973937564426,
+        "error": ""
+      }
+    ],
+    "speedup": 1.6479665428850803
+  },
+  {
+    "num_workers": 4,
+    "wall_clock_s": 3.0710201263427734,
+    "steady_throughput_fps": 601.1763603721773,
+    "avg_worker_fps": 150.29409009304433,
+    "avg_call_wall_ms": 7.731640338897705,
+    "avg_gpu_total_ms": 7.24695875,
+    "avg_cpu_overhead_ms": 0.4846815888977052,
+    "gpu_stats": {
+      "avg_util": 65.0,
+      "peak_util": 65,
+      "avg_vram_mb": 1331.0,
+      "peak_vram_mb": 1331,
+      "num_samples": 1
+    },
+    "results": [
+      {
+        "worker_id": 0,
+        "angle": 0.0,
+        "fps": 205.21383453937872,
+        "call_wall_ms": 4.8729658126831055,
+        "gpu_total_ms": 4.393765,
+        "cpu_overhead_ms": 0.4792008126831053,
+        "mean_pixel": 78.36545011732314,
+        "error": ""
+      },
+      {
+        "worker_id": 1,
+        "angle": 90.0,
+        "fps": 91.14832260342814,
+        "call_wall_ms": 10.971128940582275,
+        "gpu_total_ms": 10.472195000000001,
+        "cpu_overhead_ms": 0.49893394058227436,
+        "mean_pixel": 92.97017203436957,
+        "error": ""
+      },
+      {
+        "worker_id": 2,
+        "angle": 180.0,
+        "fps": 207.34421885736603,
+        "call_wall_ms": 4.822897911071777,
+        "gpu_total_ms": 4.367859999999999,
+        "cpu_overhead_ms": 0.45503791107177793,
+        "mean_pixel": 92.973937564426,
+        "error": ""
+      },
+      {
+        "worker_id": 3,
+        "angle": 270.0,
+        "fps": 97.46998437200439,
+        "call_wall_ms": 10.259568691253662,
+        "gpu_total_ms": 9.754014999999999,
+        "cpu_overhead_ms": 0.5055536912536631,
+        "mean_pixel": 105.23057895236545,
+        "error": ""
+      }
+    ],
+    "speedup": 2.0018768146581905
+  },
+  {
+    "num_workers": 6,
+    "wall_clock_s": 4.100659608840942,
+    "steady_throughput_fps": 1186.1301095850274,
+    "avg_worker_fps": 197.68835159750458,
+    "avg_call_wall_ms": 5.2747031052907305,
+    "avg_gpu_total_ms": 4.825159166666666,
+    "avg_cpu_overhead_ms": 0.4495439386240641,
+    "gpu_stats": {
+      "avg_util": 3.0,
+      "peak_util": 3,
+      "avg_vram_mb": 1354.0,
+      "peak_vram_mb": 1354,
+      "num_samples": 1
+    },
+    "results": [
+      {
+        "worker_id": 0,
+        "angle": 0.0,
+        "fps": 130.9678396400363,
+        "call_wall_ms": 7.635462284088135,
+        "gpu_total_ms": 7.114914999999999,
+        "cpu_overhead_ms": 0.5205472840881358,
+        "mean_pixel": 78.36545011732314,
+        "error": ""
+      },
+      {
+        "worker_id": 1,
+        "angle": 60.0,
+        "fps": 180.2137573821488,
+        "call_wall_ms": 5.548965930938721,
+        "gpu_total_ms": 5.0997449999999995,
+        "cpu_overhead_ms": 0.4492209309387212,
+        "mean_pixel": 67.63464143541124,
+        "error": ""
+      },
+      {
+        "worker_id": 2,
+        "angle": 120.0,
+        "fps": 206.22281660086435,
+        "call_wall_ms": 4.849123954772949,
+        "gpu_total_ms": 4.414125000000001,
+        "cpu_overhead_ms": 0.43499895477294803,
+        "mean_pixel": 99.46323945787218,
+        "error": ""
+      },
+      {
+        "worker_id": 3,
+        "angle": 180.0,
+        "fps": 202.60282773245225,
+        "call_wall_ms": 4.935765266418457,
+        "gpu_total_ms": 4.491985000000001,
+        "cpu_overhead_ms": 0.44378026641845647,
+        "mean_pixel": 92.97391976250543,
+        "error": ""
+      },
+      {
+        "worker_id": 4,
+        "angle": 240.0,
+        "fps": 257.7604611574413,
+        "call_wall_ms": 3.879570960998535,
+        "gpu_total_ms": 3.4329499999999995,
+        "cpu_overhead_ms": 0.44662096099853565,
+        "mean_pixel": 79.30148654513889,
+        "error": ""
+      },
+      {
+        "worker_id": 5,
+        "angle": 300.0,
+        "fps": 208.3624070720845,
+        "call_wall_ms": 4.799330234527588,
+        "gpu_total_ms": 4.397235,
+        "cpu_overhead_ms": 0.40209523452758766,
+        "mean_pixel": 117.69972229003906,
+        "error": ""
+      }
+    ],
+    "speedup": 3.949733426105185
+  },
+  {
+    "num_workers": 8,
+    "wall_clock_s": 6.793148994445801,
+    "steady_throughput_fps": 573.0629634354983,
+    "avg_worker_fps": 71.63287042943729,
+    "avg_call_wall_ms": 15.037274360656738,
+    "avg_gpu_total_ms": 14.468401875,
+    "avg_cpu_overhead_ms": 0.5688724856567383,
+    "gpu_stats": {
+      "avg_util": 52.0,
+      "peak_util": 99,
+      "avg_vram_mb": 8060.0,
+      "peak_vram_mb": 14797,
+      "num_samples": 2
+    },
+    "results": [
+      {
+        "worker_id": 0,
+        "angle": 0.0,
+        "fps": 73.9005621427143,
+        "call_wall_ms": 13.481688499450684,
+        "gpu_total_ms": 12.493235,
+        "cpu_overhead_ms": 0.9884534994506833,
+        "mean_pixel": 78.3653941684299,
+        "error": ""
+      },
+      {
+        "worker_id": 1,
+        "angle": 45.0,
+        "fps": 46.948133571974644,
+        "call_wall_ms": 21.250009536743164,
+        "gpu_total_ms": 20.719425,
+        "cpu_overhead_ms": 0.530584536743163,
+        "mean_pixel": 50.27054341634115,
+        "error": ""
+      },
+      {
+        "worker_id": 2,
+        "angle": 90.0,
+        "fps": 81.28992370658287,
+        "call_wall_ms": 12.301647663116455,
+        "gpu_total_ms": 11.807244999999998,
+        "cpu_overhead_ms": 0.49440266311645686,
+        "mean_pixel": 92.97047339545355,
+        "error": ""
+      },
+      {
+        "worker_id": 3,
+        "angle": 135.0,
+        "fps": 54.796022415880024,
+        "call_wall_ms": 18.149256706237793,
+        "gpu_total_ms": 17.710985,
+        "cpu_overhead_ms": 0.4382717062377921,
+        "mean_pixel": 92.43659930759006,
+        "error": ""
+      },
+      {
+        "worker_id": 4,
+        "angle": 180.0,
+        "fps": 75.52636838854546,
+        "call_wall_ms": 13.240408897399902,
+        "gpu_total_ms": 12.690650000000002,
+        "cpu_overhead_ms": 0.5497588973999008,
+        "mean_pixel": 92.97391976250543,
+        "error": ""
+      },
+      {
+        "worker_id": 5,
+        "angle": 225.0,
+        "fps": 64.9494255009446,
+        "call_wall_ms": 15.396595001220703,
+        "gpu_total_ms": 14.872620000000001,
+        "cpu_overhead_ms": 0.5239750012207018,
+        "mean_pixel": 72.9968393113878,
+        "error": ""
+      },
+      {
+        "worker_id": 6,
+        "angle": 270.0,
+        "fps": 120.68498294448288,
+        "call_wall_ms": 8.286035060882568,
+        "gpu_total_ms": 7.80313,
+        "cpu_overhead_ms": 0.482905060882568,
+        "mean_pixel": 105.23037168714735,
+        "error": ""
+      },
+      {
+        "worker_id": 7,
+        "angle": 315.0,
+        "fps": 54.96754476437355,
+        "call_wall_ms": 18.192553520202637,
+        "gpu_total_ms": 17.649924999999996,
+        "cpu_overhead_ms": 0.5426285202026406,
+        "mean_pixel": 119.81593153211806,
+        "error": ""
+      }
+    ],
+    "speedup": 1.9082610951811663
+  }
+]

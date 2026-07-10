@@ -27,6 +27,8 @@ struct alignas(16) ShadowConstants
     dm::float2   imageSize;
     uint32_t     shadowEnabled;
     uint32_t     shadowRayMask;
+    uint32_t     blurDirection;   // 0 = horizontal, 1 = vertical
+    uint32_t     shadowSamples;   // rays per pixel (default 4, increase for OMM A/B)
 };
 
 // GPU-side per-instance metadata for alpha-tested shadow tracing

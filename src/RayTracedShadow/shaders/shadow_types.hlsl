@@ -13,6 +13,8 @@ struct ShadowConstants
     float2  imageSize;
     uint    shadowEnabled;
     uint    shadowRayMask;
+    uint    blurDirection; // 0 = horizontal, 1 = vertical
+    uint    shadowSamples;  // rays per pixel (default 4)
 };
 
 struct ShadowInstanceMeta

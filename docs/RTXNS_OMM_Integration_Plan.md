@@ -1,219 +1,304 @@
-# RTXNS 集成 Opacity Micromaps (OMM) 与光线追踪阴影 — 全局方案
+# Flora OMM 集成计划 — Opacity Micromap 硬件加速光追阴影
 
-## 1. 目标
+## 概述
 
-在 RTXNS（Python → Donut → Vulkan 光栅化渲染器）中集成基于光线追踪的半透明阴影，借助 **Opacity Micromaps (OMM)** 硬件加速植被/叶片等透明材质的阴影评估。
+在 Phase 1 光追阴影管线 + Sun Jitter 质量优化的基础上，集成 **NVIDIA Opacity Micromap (OMM)**，利用 Ada Lovelace+ 架构的硬件加速能力，跳过已确认透明/不透明的微三角形，减少 alpha-tested 几何（植被叶片）的 Ray Query 候选遍历开销。
 
-### 1.1 参考实现
-
-| 项目 | 路径 | 用途 |
-|------|------|------|
-| **Niagara** (zeux Vulkan 渲染器) | `D:\niagara\` | 完整的 OMM+RT 阴影管线参考实现 |
-| **NVIDIA OMM SDK** (v1.9.1) | `D:\OMM\` | 官方 OMM 烘焙 SDK，CPU Baker 可脱离 Donut 使用 |
+Bistro 场景有 **2909 个实例、大量 alpha-tested 叶片几何体**，当前每次 shadow ray 遇到 alpha-tested 三角形都需要在 shader 中执行纹理采样 + cutoff 判断。OMM 将 opacity 状态预烘焙到微三角粒度，让 GPU 硬件在 traversal 阶段直接跳过已知透明/不透明的微三角。
 
 ---
 
-## 2. 现状分析
+## 前置条件
 
-| 维度 | 当前状态 | 关键文件 |
-|------|---------|---------|
-| 渲染管线 | 纯光栅化 ForwardShadingPass，无阴影 | `D:\RTXNS\src\PythonBindings\headless_pbr.cpp:383-470` |
-| 光线追踪 | 无 BLAS/TLAS/RT Pipeline/SBT | — |
-| OMM | 无 | — |
-| Donut RT | 框架不提供（README 明确由应用自行构建） | `D:\RTXNS\external\donut` (子模块未 init) |
-| NVRHI RT API | 存在但未使用 (`nvrhi::rt::*`) | Donut 自带 |
-| C++ 标准 | C++20 | `D:\RTXNS\CMakeLists.txt:18` |
-| GPU 后端 | Vulkan 1.2+ | `D:\RTXNS\CMakeLists.txt:25` |
+| 项目 | 状态 |
+|------|------|
+| OMM SDK 编译 (`omm-bake.lib`, 9MB) | ✅ 已完成 (D:\OMM\build) |
+| CMake 链接 OMM SDK | ✅ 已完成 (`CMakeLists.txt` line 56) |
+| NVRHI OMM 抽象层 | ✅ 已确认 (完整的 `IOpacityMicromap` / `createOpacityMicromap` / `buildOpacityMicromap` / BLAS pNext) |
+| Vulkan 扩展请求 `VK_KHR_opacity_micromap` | ⚠️ 已写代码但注释掉 (需恢复) |
+| 设备支持检测 (`Feature::RayTracingOpacityMicromap`) | ⚠️ 同上 |
+| 目标 GPU | **RTX 5090D (32GB, Blackwell)** — ✅ 完整原生 OMM 硬件加速 |
+
+> RTX 5090D 从 Ada Lovelace 继承并增强了 OMM 硬件加速，是集成验证的理想平台。预期性能收益可完整体现。
 
 ---
 
-## 3. 总体架构（目标状态）
+## 推进计划
 
-```
-Python (GenesisStyleRenderer)
-  │  D:\RTXNS\python\rtxns_genesis_style\renderer.py
-  │
-  ├── GlbSceneBuilder → 构建 GLB 场景
-  │     D:\RTXNS\python\rtxns_genesis_style\glb_builder.py
-  │
-  ├── scene.load_scene() → C++ HeadlessPbrScene
-  │     D:\RTXNS\src\PythonBindings\headless_pbr.cpp
-  │
-  └── scene.render_frame() →
-        │
-        ├── [现有] Rasterize ForwardShadingPass (albedo + depth)
-        │     依赖: donut/render/ForwardShadingPass.h
-        │
-        └── [新增] RayTracedShadowPass
-              ├── 1. BLAS 构建 (首次/脏更新)
-              │     参考: D:\niagara\src\scenert.cpp:16-180 (buildBLAS)
-              ├── 2. OMM 烘焙 (CPU, 首次/脏更新) [Phase 2]
-              │     参考: D:\niagara\src\scene.cpp:861-1049 (buildSceneOmm)
-              │     备选: D:\OMM\libraries\omm-lib\include\omm.h (OMM SDK C API)
-              ├── 3. OMM AS 构建 [Phase 2]
-              │     参考: D:\niagara\src\scenert.cpp:581-692 (buildOMM)
-              ├── 4. TLAS 构建/更新 (每帧)
-              ├── 5. TraceRay: 阴影光线 (每像素 1 spp)
-              │     参考: D:\niagara\src\shaders\shadow.comp.glsl (GLSL RT shader)
-              ├── 6. Shadow Denoise (可选双边模糊) [Phase 3]
-              │     参考: D:\niagara\src\shaders\shadowblur.comp.glsl
-              └── 7. 合成到 ForwardShadingPass 输出
+### 步骤 1：恢复 Vulkan OMM 扩展请求 + 设备检测
+
+**文件**：`src/PythonBindings/headless_pbr.cpp`
+
+取消注释已写好的 OMM 扩展请求代码：
+
+```cpp
+// 恢复：请求 VK_KHR_opacity_micromap 扩展
+device_params.optionalVulkanDeviceExtensions.push_back(
+    VK_KHR_OPACITY_MICROMAP_EXTENSION_NAME);
+
+// 恢复：检测 OMM 支持
+m_ommSupported = m_device_manager->GetDevice()->queryFeatureSupport(
+    nvrhi::Feature::RayTracingOpacityMicromap);
 ```
 
+**产出**：`m_ommSupported` 标志位 + 设备创建日志确认扩展可用性。
+
 ---
 
-## 4. 参考代码索引
+### 步骤 2：CPU OMM Baker 封装
 
-### 4.1 Niagara 渲染器 (`D:\niagara\`)
+**新增文件**：`src/RayTracedShadow/OMMBaker.h` / `OMMBaker.cpp`
 
-| 文件 | 行号 | 用途 |
+核心职责：从 Donut `Material` 提取 alpha 纹理数据 → 调用 OMM SDK `omm::Cpu::Bake()` → 输出 OMM 数据。
+
+#### 输入
+
+遍历 `SceneGeometryProvider` 提取的几何体元数据，对每个 `isAlphaTested == true` 的材质：
+
+| 输入 | 来源 | 说明 |
 |------|------|------|
-| `D:\niagara\src\scene.cpp` | `861-1049` | `buildSceneOmm()` — OMM 离线烘焙完整流程 |
-| `D:\niagara\src\scene.cpp` | `20-22` | OMM 烘焙常量 (`kOmmSubdivisionScale`, `kOmmSubdivisionLevel`) |
-| `D:\niagara\src\scene.cpp` | `836-858` | `normalizeIndicesForOMM()` — 索引旋转适配 meshoptimizer 格式 |
-| `D:\niagara\src\scene.h` | `68-84` | `Mesh` 结构体 (含 `ommIndexData`, `ommIndexBase`) |
-| `D:\niagara\src\scene.h` | `86-100` | `Geometry` 结构体 (含 `ommData`, `ommDescs`, `ommIndices`, `ommStates`) |
-| `D:\niagara\src\scene.h` | `102-108` | `Camera` 结构体 |
-| `D:\niagara\src\scenert.cpp` | `1-180` | `buildBLAS()` — BLAS 构建，含 OMM pNext 附着 |
-| `D:\niagara\src\scenert.cpp` | `14` | `kBuildOMM` 标志 |
-| `D:\niagara\src\scenert.cpp` | `64-83` | OMM 挂接到 BLAS 几何体 (pNext chain) |
-| `D:\niagara\src\scenert.cpp` | `516` | Instance 标记: `FORCE_OPAQUE_BIT` vs `0` |
-| `D:\niagara\src\scenert.cpp` | `581-692` | `buildOMM()` — Vulkan OMM AS 构建 |
-| `D:\niagara\src\scenert.h` | `20` | `buildOMM()` 声明 |
-| `D:\niagara\src\nagara.cpp` | `36-43` | 阴影/模糊/质量 全局开关变量 |
-| `D:\niagara\src\nagara.cpp` | `359-374` | 键盘按键映射 (`F`/`B`/`Q`/`X`) |
-| `D:\niagara\src\nagara.cpp` | `700-758` | 阴影管线创建 (shadowlqPipeline / shadowhqPipeline) |
-| `D:\niagara\src\nagara.cpp` | `844` | OMM states 环境变量 (`OMM=4` 默认) |
-| `D:\niagara\src\nagara.cpp` | `861-868` | `buildSceneOmm()` 调用 + OMMMIP 环境变量 |
-| `D:\niagara\src\nagara.cpp` | `1096-1127` | OMM AS + ommIndex 缓冲区上传到 GPU |
-| `D:\niagara\src\nagara.cpp` | `1771-1797` | 阴影 Ray Tracing dispatch |
-| `D:\niagara\src\nagara.cpp` | `1791` | `sunJitter` 设置 (blur 时 1e-2，否则 0) |
-| `D:\niagara\src\nagara.cpp` | `1815-1829` | 阴影双边模糊 dispatch |
-| `D:\niagara\src\nagara.cpp` | `1885-1903` | 最终合成 (阴影 × 光照) |
-| `D:\niagara\src\device.cpp` | `283-408` | OMM 特性启用 (`VK_KHR_opacity_micromap`) |
-| `D:\niagara\src\config.h` | `1-52` | 全局配置常量 |
-| `D:\niagara\src\shaders\shadow.comp.glsl` | `1-161` | 阴影光追主 shader (GLSL) |
-| `D:\niagara\src\shaders\shadow.comp.glsl` | `26-35` | `ShadowData` 结构体 |
-| `D:\niagara\src\shaders\shadow.comp.glsl` | `78-84` | `shadowTrace()` — 不透明阴影函数 |
-| `D:\niagara\src\shaders\shadow.comp.glsl` | `86-123` | `shadowTraceTransparent()` — alpha test 透明阴影 |
-| `D:\niagara\src\shaders\shadow.comp.glsl` | `143-151` | 太阳方向 jitter (gradient noise) |
-| `D:\niagara\src\shaders\shadow.comp.glsl` | `153-160` | Quality 分支 (0=opaque OMM2, 1=transparent) |
-| `D:\niagara\src\shaders\shadowblur.comp.glsl` | `1-64` | 可分离双边阴影模糊 |
-| `D:\niagara\src\shaders\shadowblur.comp.glsl` | `3` | `#define BLUR 1` |
-| `D:\niagara\src\shaders\shadowblur.comp.glsl` | `36` | 模糊核半宽: `KERNEL = 10` |
-| `D:\niagara\src\shaders\shadowfill.comp.glsl` | `1-46` | 棋盘格补洞 shader |
-| `D:\niagara\src\shaders\final.comp.glsl` | `1-80` | 最终合成 (阴影 ambient=0.05, sunIntensity=2.5) |
-| `D:\niagara\src\shaders\mesh.h` | `1-` | GPU 侧 Mesh 结构 (含 `ommIndexData`, `lodRT`) |
-| `D:\niagara\src\shaders\math.h` | `1-` | `gradientNoise()` 噪声函数 |
-| `D:\niagara\src\scenecache.cpp` | `52-57` | `SceneCameraFile` 结构体 |
-| `D:\niagara\src\scenecache.cpp` | `115-393` | 场景缓存 保存/加载 (含 OMM 数据持久化) |
-| `D:\niagara\src\textures.cpp` | `262-381` | `decodeImageRGBA()` — DDS BCn 解码到 RGBA8 |
-| `D:\niagara\extern\meshoptimizer\src\meshoptimizer.h` | `885-920` | `opacityMapMeasure/Rasterize/Compact` API |
-| `D:\niagara\README.md` | `1-167` | 项目概述 + 全部 33 集 Stream 索引 |
+| Alpha 纹理像素数据 | `material->opacityTexture` 或 `material->baseOrDiffuseTexture` (通道 `.a`) | 需 CPU 端读取纹理像素 |
+| 索引缓冲区 (IB) | `SceneGeometryProvider` 已提取 | 三角形索引 |
+| UV 缓冲区 | `SceneGeometryProvider` 已从 VB 中提取 (offset=20, 含 float2) | 纹理坐标 |
+| alphaCutoff | `material->alphaCutoff` | 默认 0.5 |
+| 细分级别 (subdivisionLevel) | 固定 5 (1024 微三角/三角形) 或自适应 | OMM 精度 |
+| 格式 (format) | `omm::Format::OC1_4_State` (4 态) 或 `OC1_2_State` (2 态) | 2 态更紧凑 |
 
-### 4.2 NVIDIA OMM SDK (`D:\OMM\`)
+#### 调用 OMM SDK
 
-| 文件 | 行号 | 用途 |
-|------|------|------|
-| `D:\OMM\libraries\omm-lib\include\omm.h` | `1-1206` | **C API** — 全部类型、枚举、结构体、函数声明 |
-| `D:\OMM\libraries\omm-lib\include\omm.h` | `98-104` | `ommOpacityState` 枚举 (Transparent/Opaque/UO/UT) |
-| `D:\OMM\libraries\omm-lib\include\omm.h` | `106-112` | `ommSpecialIndex` 枚举 (-1 ~ -4) |
-| `D:\OMM\libraries\omm-lib\include\omm.h` | `114-122` | `ommFormat` 枚举 (OC1_2_State / OC1_4_State) |
-| `D:\OMM\libraries\omm-lib\include\omm.h` | `124-134` | `ommUnknownStatePromotion` 枚举 (Nearest/ForceOpaque/ForceTransparent) |
-| `D:\OMM\libraries\omm-lib\include\omm.h` | `282-287` | `ommCpuTextureFormat` 枚举 (UNORM8 / FP32) |
-| `D:\OMM\libraries\omm-lib\include\omm.h` | `298-334` | `ommCpuBakeFlags` 枚举 (内部线程/特殊索引/去重等) |
-| `D:\OMM\libraries\omm-lib\include\omm.h` | `340-356` | `ommCpuTextureMipDesc` 结构体 |
-| `D:\OMM\libraries\omm-lib\include\omm.h` | `358-378` | `ommCpuTextureDesc` 结构体 |
-| `D:\OMM\libraries\omm-lib\include\omm.h` | `380-460` | **`ommCpuBakeInputDesc`** — 核心烘焙输入结构体 |
-| `D:\OMM\libraries\omm-lib\include\omm.h` | `492-530` | `ommCpuOpacityMicromapDesc` / `ommCpuBakeResultDesc` 输出结构体 |
-| `D:\OMM\libraries\omm-lib\include\omm.h` | `532-544` | `ommCpuBlobDesc` 序列化结构体 |
-| `D:\OMM\libraries\omm-lib\include\omm.h` | `568-594` | 全部 CPU Baker C API 函数声明 |
-| `D:\OMM\libraries\omm-lib\include\omm.hpp` | `1-1088` | C++ namespace 封装 (inline 实现) |
-| `D:\OMM\libraries\omm-lib\src\bake_cpu_impl.cpp` | `1-1990` | CPU Baker 完整14步管线实现 |
-| `D:\OMM\libraries\omm-lib\src\bake_kernels_cpu.h` | `1-454` | **LevelLineIntersection** + 保守双线性算法 |
-| `D:\OMM\libraries\omm-lib\src\bake_kernels_cpu.h` | `25-60` | `GetStateFromCoverage()` — 状态决策逻辑 |
-| `D:\OMM\libraries\omm-lib\src\util\bird.h` | `1-184` | Bird Curve 数学 (微三角形索引/重心坐标) |
-| `D:\OMM\libraries\omm-lib\src\defines.h` | `1-28` | `kMaxSubdivLevel = 12` |
-| `D:\OMM\libraries\omm-lib\src\bake.cpp` | `1-480` | C API 入口点实现 |
-| `D:\OMM\libraries\omm-lib\CMakeLists.txt` | `1-130` | 构建依赖: glm + stb + xxHash + lz4 (C++20) |
-| `D:\OMM\support\tests\test_minimal_sample.cpp` | `1-160` | **最小使用示例** (CreateBaker → CreateTexture → Bake → GetResult) |
-| `D:\OMM\docs\integration_guide.md` | `1-782` | SDK 集成指南 |
-| `D:\OMM\docs\OMM_SDK_源码实现链路分析.md` | `1-758` | 中文源码级实现链路分析 |
+```cpp
+// 1. 创建 Baker
+omm::BakeOptions options;
+options.type = omm::BakeType::CPU;
+
+// 2. 创建纹理
+auto tex = omm::Cpu::CreateTexture(baker, alphaPixels, width, height);
+
+// 3. 配置输入
+omm::Cpu::BakeInputDesc input = {};
+input.texture = tex;
+input.alphaMode = omm::AlphaMode::kCutoff;
+input.alphaCutoff = cutoff;
+input.indexBuffer = ibData;      // 直接使用 BLAS 的 IB
+input.uvBuffer = uvData;         // 直接使用 BLAS 的 UV
+input.format = omm::Format::OC1_4_State;
+input.subdivisionLevel = 5;
+
+// 4. 烘焙
+omm::Cpu::Bake(baker, &input, 1);
+
+// 5. 获取结果
+auto* result = omm::Cpu::GetBakeResultDesc(baker);
+// result->arrayData, result->descArray, result->indexBuffer, result->histograms
+```
+
+#### 输出数据结构
+
+```cpp
+// 封装为 RTXNS 内部结构
+struct OMMBakeResult {
+    std::vector<uint8_t>     arrayData;      // 微三角不透明度位 → VkMicromapBuildInfoEXT::data
+    std::vector<uint8_t>     descArray;      // OMM 描述符 → VkMicromapBuildInfoEXT::triangleArray
+    std::vector<uint8_t>     indexBuffer;    // 三角形→OMM 映射 → BLAS OMM attachment
+    omm::IndexFormat         indexFormat;
+    std::vector<omm::Cpu::OpacityMicromapUsageCount> descHistogram;
+    std::vector<omm::Cpu::OpacityMicromapUsageCount> indexHistogram;
+};
+```
 
 ---
 
-## 5. 分阶段计划
+### 步骤 3：OMM 加速结构构建 (NVRHI)
 
-### Phase 1: 基础光线追踪不透明阴影
+**修改文件**：`src/RayTracedShadow/AccelerationStructure.h/.cpp`
 
-**目标**: 构建完整的 Vulkan RT 管线底层设施，实现单光线硬阴影。
+在现有 BLAS/TLAS 构建流程中加入 OMM 加速结构的创建。
 
-- BLAS + TLAS 构建
-- 单光线 TraceRay 阴影查询
-- 合成到现有 ForwardShadingPass 输出
-- **不包含**: OMM、透明阴影、模糊、棋盘格、Python 绑定
+#### 3a. 创建 OMM Array
 
-> 详见: `D:\RTXNS\docs\RTXNS_Phase1_RayTracedShadow.md`
+```cpp
+// 通过 NVRHI 创建 OMM（无需原始 Vulkan API）
+nvrhi::rt::OpacityMicromapDesc ommDesc;
+ommDesc.flags = nvrhi::rt::OpacityMicromapBuildFlags::FastTrace;
+ommDesc.counts = { /* 从 descHistogram 转换 */ };
+ommDesc.inputBuffer = arrayDataBuffer;
+ommDesc.perOmmDescs = descArrayBuffer;
 
-### Phase 2: OMM 烘焙与集成
+auto ommHandle = device->createOpacityMicromap(ommDesc);
+commandList->buildOpacityMicromap(ommHandle, ommDesc);
+```
 
-**目标**: 集成 OMM 离线烘焙和 Vulkan OMM AS 构建。
+`descHistogram` 和 NVRHI 的 `rt::OpacityMicromapUsageCount` 内存布局完全相同（已验证），可以直接 memcpy。
 
-- OMM CPU 离线烘焙（meshoptimizer 方案优先，OMM SDK 作为备选高精度方案）
-- OMM AS 构建 (Vulkan `VK_ACCELERATION_STRUCTURE_TYPE_OPACITY_MICROMAP_KHR`)
-- BLAS OMM 附着 (pNext chain)
-- Quality 0: OMM 2-state 强制不透明阴影
+#### 3b. BLAS OMM 附着
 
-核心参考:
-- `D:\niagara\src\scene.cpp:861-1049` — 烘焙流程
-- `D:\niagara\src\scenert.cpp:581-692` — Vulkan OMM AS 构建
-- `D:\niagara\src\scenert.cpp:64-83` — BLAS OMM pNext 附着
-- `D:\OMM\support\tests\test_minimal_sample.cpp` — OMM SDK 最小示例
+```cpp
+// 通过 NVRHI GeometryTriangles 的 setOpacityMicromap 附着
+nvrhi::rt::GeometryTriangles geomDesc;
+geomDesc.setOpacityMicromap(ommHandle);
+geomDesc.setOMMIndexBuffer(ommIndexBuffer, ommIndexFormat);
+geomDesc.setOMMUsageCounts(indexHistogram.data(), indexHistogram.size());
 
-### Phase 3: 透明阴影 + 降噪
-
-**目标**: 支持带透明度的阴影光线（植被透光效果）。
-
-- Quality 1: Alpha test 透明阴影
-- OMM 4-state 支持（Unknown Opaque / Unknown Transparent）
-- 可选阴影双边模糊 + 棋盘格渲染
-
-核心参考:
-- `D:\niagara\src\shaders\shadow.comp.glsl:86-123` — `shadowTraceTransparent()`
-- `D:\niagara\src\shaders\shadowblur.comp.glsl` — 双边模糊
-- `D:\niagara\src\shaders\shadowfill.comp.glsl` — 棋盘格补洞
-- `D:\niagara\src\nagara.cpp:153-160` — Quality 0 vs 1 分支逻辑
-
-### Phase 4: Python 绑定与工具
-
-**目标**: 在 Python 侧暴露 OMM/阴影控制。
-
-- `GenesisStyleRenderer` 新增 OMM 开关、阴影质量参数
-- 性能对比工具（OMM on/off, Quality 0/1, blur on/off）
-- Bistro 场景 GLB 验证
-
-核心参考:
-- `D:\RTXNS\python\rtxns_genesis_style\renderer.py` — 现有 Python API
-- `D:\RTXNS\src\PythonBindings\py_interface_donut_native.cpp` — 现有 pybind11 绑定
+// BLAS 构建时自动在 pNext 链中包含 OMM 信息
+```
 
 ---
 
-## 6. 关键风险与缓解
+### 步骤 4：Instance Flag 启用 + Shader 端
 
-| 风险 | 严重度 | 缓解 |
+**修改文件**：`src/RayTracedShadow/AccelerationStructure.cpp`、`shadow_rayquery_cs.hlsl`
+
+#### 4a. Instance Flag
+
+```cpp
+// 对 alpha-tested mesh 的 TLAS instance 设置 OMM flag
+if (hasAlphaTestedGeometry && m_ommSupported) {
+    instance.setFlags(instance.getFlags() | 
+        nvrhi::rt::InstanceFlags::ForceOMM2State);
+}
+```
+
+NVRHI 内部映射为 `VK_GEOMETRY_INSTANCE_FORCE_OPACITY_MICROMAP_2_STATE_EXT`。
+
+#### 4b. Shader 端
+
+在 `shadow_rayquery_cs.hlsl` 的 RayQuery 调用中，**不需要修改 shader 代码**——`ForceOMM2State` 是 instance 级别的 flag，GPU 硬件在 traversal 阶段自动处理 OMM 查询。Shader 中的 `AlphaTestCandidate()` 仍然作为 fallback（对未覆盖的微三角）。
+
+---
+
+### 步骤 5：Python 端暴露 + 测试脚本
+
+**修改文件**：`headless_pbr.h/.cpp`、`py_bindings_common.h`  
+**新增文件**：`tools/test_omm_shadow.py`
+
+#### Python API 新增
+
+```python
+scene.enable_omm(True)               # 启用/禁用 OMM
+scene.set_omm_config(
+    subdivision_level=5,             # 细分级别
+    format="OC1_4_State"             # 2 态 / 4 态
+)
+stats = scene.get_last_frame_stats() # 已有，记录 shadow_ray_ms
+scene.get_omm_info()                 # OMM 状态查询
+```
+
+#### 测试脚本流程
+
+```python
+# 1. 无 OMM 基线
+scene.enable_omm(False)
+baseline_img, baseline_stats = render_and_capture(scene)
+
+# 2. 启用 OMM (4 态)
+scene.enable_omm(True)
+omm4_img, omm4_stats = render_and_capture(scene)
+
+# 3. 启用 OMM (2 态)
+scene.set_omm_config(format="OC1_2_State")
+omm2_img, omm2_stats = render_and_capture(scene)
+
+# 4. 像素差异分析 + 帧率对比
+```
+
+---
+
+## 预期结果
+
+### 质量验证
+
+| 对比维度 | 预期 | 验证方法 |
+|---------|------|---------|
+| 阴影正确性 | OMM ON/OFF 像素差 ≈ 0（阴影结果应一致） | 像素级 diff = 0 |
+| 叶片轮廓 | Alpha-tested 叶片阴影形态不变 | 视觉对比 + 差异图 |
+| 边界处理 | 微三角边界处无可见接缝 | 局部放大对比 |
+
+### 性能预期
+
+| 场景 | 指标 | 无 OMM (基线) | OMM 4 态 (预期) | 说明 |
+|------|------|-------------|-----------------|------|
+| Bistro | shadow_ray_ms | ~0.10ms | **~0.04-0.06ms (-40-60%)** | traversal 阶段跳过大量 alpha 微三角 |
+| Bistro | 总帧时 | ~4.0ms | **~3.9ms** | shadow ray 占比低，总帧时变化有限 |
+| Bistro | Alpha test shader 调用 | 每个 alpha hit 触发 | **大幅减少** | 硬件 traversal 自动跳过 |
+
+> RTX 5090D (32GB, Blackwell) 原生支持 OMM 硬件加速，API 调用完备。性能收益预计 40-60% 的 shadow_ray 开销缩减。
+
+### OMM 数据统计 (Bistro 场景预期)
+
+| 指标 | 估算值 | 说明 |
 |------|--------|------|
-| `external/donut` 子模块未初始化 (空目录) | **阻塞** | Phase 1 第一步: `git submodule update --init --recursive` |
-| Donut/NVRHI RT API 文档稀少 | 中 | 参考 nvrhi 官方示例 + Niagara 的纯 Vulkan 实现 |
-| Donut Scene 几何布局与 RT Buffer 格式不兼容 | 中 | Phase 1 先做最小 BLAS 验证 |
-| Headless 模式下 Vulkan RT 扩展可用性 | 低 | 已确认 RTX 5080 + Vulkan 1.4 支持所有 RT 扩展 |
-| C++ 编译时间增加（RT Shader 编译） | 低 | 仅新增 ~5 个 HLSL shader，增量编译可控 |
+| Alpha-tested 材质数 | ~20-30 | 含叶片、栅栏等 |
+| OMM Array 总大小 | < 1 MB | 压缩编码，微三角粒度 |
+| Index Buffer 大小 | < 100 KB | 每三角形 2-4 字节索引 |
+| CPU Bake 耗时 | < 100 ms | 一次性，场景加载时执行 |
 
 ---
 
-## 7. 预期产出
+## 最终结果展示：对比报告
 
-1. **C++ 库**: `rtxns_ray_traced_shadow` — 独立于 Donut 的 RT 阴影模块
-2. **HLSL Shader**: ~5 个 RT/Compute shader
-3. **Python 绑定扩展**: `GenesisStyleRenderer` 新参数
-4. **文档**: Phase 1-4 详细方案文档
-5. **验证场景**: Bistro GLB (`D:\niagara_bistro\bistro.gltf`) 的阴影对比图
+类似 `RTXNS_ShadowQuality_Optimization_Report.md`，最终产出将包含：
+
+### 对比图
+
+```
+(A) OMM OFF (当前基线)          (B) OMM ON (4 态)            (C) |diff| × 放大
+┌─────────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
+│                     │    │                     │    │                     │
+│   当前渲染结果       │    │   OMM 启用后渲染     │    │   像素差异热力图     │
+│   (alpha test 全走    │    │   (硬件跳过已知      │    │   (全黑=完全一致)    │
+│    shader fallback)  │    │    透明/不透明微三角) │    │                     │
+│                     │    │                     │    │                     │
+└─────────────────────┘    └─────────────────────┘    └─────────────────────┘
+```
+
+### 性能对比 (RTX 40 目标)
+
+| 配置 | 帧时 | 帧率 | shadow_ray_ms | 说明 |
+|------|------|------|--------------|------|
+| RT 阴影 (无 OMM) | 4.0 ms | 250 FPS | 0.10 ms | 当前基线 |
+| RT 阴影 (OMM 4 态) | 3.9 ms | 256 FPS | ~0.07 ms | -30% ray query 开销 |
+| RT 阴影 (OMM 2 态) | 3.9 ms | 256 FPS | ~0.06 ms | 更紧凑，-40% |
+
+### OMM 烘焙统计
+
+| 指标 | 值 |
+|------|-----|
+| Alpha-tested 材质数 | N |
+| 总三角形数 (alpha) | M |
+| OMM Array 总大小 | X KB |
+| CPU Bake 耗时 | Y ms |
+| 特殊索引数 (全透/全不透) | Z |
+
+### 差异分析
+
+- **准确性**：OMM ON/OFF 像素级差异 = 0（阴影结果完全一致）
+- **边界验证**：叶片轮廓放大对比无变化
+- **性能**：RTX 40 上 shadow_ray_ms 预期降低 30-50%
+
+---
+
+## 修改文件清单 (计划)
+
+```
+新增:
+  src/RayTracedShadow/OMMBaker.h          ★ CPU OMM 烘焙器
+  src/RayTracedShadow/OMMBaker.cpp        ★ 调用 OMM SDK Bake API
+  tools/test_omm_shadow.py                ★ OMM 对比测试脚本
+
+修改:
+  headless_pbr.h/.cpp                     ★ 恢复 OMM 扩展 + enable_omm() + OMM 开关
+  py_bindings_common.h                    ★ Python 端 OMM 参数暴露
+  AccelerationStructure.h/.cpp            ★ OMM AS 构建 + BLAS 附着 + ForceOMM2State flag
+  SceneGeometryProvider.h/.cpp            ★ 提取 alpha 纹理数据供 Baker 使用
+  ShadowTypes.h                           ★ +OMMBakeResult 等数据结构
+```
+
+---
+
+## 风险与注意事项
+
+1. **5090D 硬件加速已就绪**：Blackwell 原生支持 OMM，性能收益可直接验证。
+2. **纹理 CPU 读回**：alpha 纹理需要从 GPU 读回 CPU 才能喂给 OMM SDK CPU Baker。需确保纹理数据在场景加载后可访问。
+3. **OMM Baker 内存**：Bistro 场景 alpha-tested 几何体数量有限，CPU Bake 开销可控（<100ms 一次）。
+4. **IB/UV 缓冲区复用**：OMM Baker 需要的 index/UV buffer 应与 BLAS 使用相同数据，确保三角形到微三角的映射一致。
+5. **NVRHI API 稳定性**：`rt::OpacityMicromapDesc` 和 `rt::GeometryTriangles` 的 OMM 相关 setter 方法已在 OMM SDK 和 RTXNS 项目共享的 NVRHI 中验证存在。

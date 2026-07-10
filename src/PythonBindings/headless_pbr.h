@@ -47,10 +47,33 @@ namespace rtxns::python
             const std::vector<float>& matrix_values);
 
         void enable_rt_shadows(bool enable);
+        void enable_shadow_blur(bool enable);
+        void enable_omm(bool enable);
+        void set_shadow_samples(uint32_t n);
+        void enable_omm_stress(bool enable);
+        void set_omm_config(uint32_t subdiv, uint32_t format);
+
+        bool load_omm_cache(const std::string& path);
+        bool save_omm_cache(const std::string& path);
 
         [[nodiscard]] std::vector<uint8_t> render_frame();
         [[nodiscard]] uint32_t width() const noexcept;
         [[nodiscard]] uint32_t height() const noexcept;
+
+        struct FrameStats
+        {
+            double total_ms = 0.0;
+            double raster_ms = 0.0;       // forward shading (opaque + transparent)
+            double blas_build_ms = 0.0;   // BLAS build (first frame only)
+            double tlas_build_ms = 0.0;   // TLAS build/update
+            double shadow_ray_ms = 0.0;   // ray query compute pass
+            double composite_ms = 0.0;    // shadow composite pass
+            double readback_ms = 0.0;     // GPU finish + texture readback
+            bool   rt_shadows_enabled = false;
+            bool   as_built_this_frame = false;
+        };
+
+        [[nodiscard]] FrameStats get_last_frame_stats() const;
 
     private:
         class Impl;

@@ -115,9 +115,9 @@ def main():
     scene.set_default_light(
         direction=[-v for v in sun_direction],
         color=[1.0, 1.0, 1.0],
-        irradiance=2.0,
+        irradiance=50.0,
     )
-    scene.set_ambient(top_rgb=[0.12, 0.12, 0.12], bottom_rgb=[0.06, 0.06, 0.06])
+    scene.set_ambient(top_rgb=[0.03, 0.03, 0.03], bottom_rgb=[0.01, 0.01, 0.01])
 
     out = Path(r"D:\RTXNS\output\bistro_test")
     out.mkdir(parents=True, exist_ok=True)

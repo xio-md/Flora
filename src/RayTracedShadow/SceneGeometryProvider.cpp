@@ -51,6 +51,10 @@ std::vector<MeshBLASInput> SceneGeometryProvider::extractFromScene(const donut::
         input.indexBuffer = buffers->indexBuffer;
         input.meshInfo = mesh.get();
 
+        // Snapshot CPU-side geometry data for OMM baking (may be empty if scene finalized)
+        input.cpuIndexData = buffers->indexData;
+        input.cpuTexcoordData = buffers->texcoord1Data;
+
         for (const auto& geom : mesh->geometries)
         {
             if (geom->type != donut::engine::MeshGeometryPrimitiveType::Triangles || geom->numIndices == 0)
@@ -354,6 +358,86 @@ ShadowSceneResources SceneGeometryProvider::buildShadowSceneResources(
     }
 
     return resources;
+}
+
+OMMCpuCache SceneGeometryProvider::cacheAlphaTestedMeshData(
+    const donut::engine::SceneGraph& sceneGraph)
+{
+    OMMCpuCache cache;
+
+    for (const auto& mesh : sceneGraph.GetMeshes())
+    {
+        if (!mesh->buffers || mesh->IsCurve())
+            continue;
+
+        auto& buffers = *mesh->buffers;
+
+        // Detect alpha-tested geometry and capture material/texture info
+        bool hasAlphaTested = false;
+        std::shared_ptr<donut::engine::LoadedTexture> alphaTex;
+        float cutoff = 0.5f;
+
+        for (const auto& geom : mesh->geometries)
+        {
+            if (geom->type != donut::engine::MeshGeometryPrimitiveType::Triangles || geom->numIndices == 0)
+                continue;
+            if (geom->material &&
+                (geom->material->domain == donut::engine::MaterialDomain::AlphaTested ||
+                 geom->material->domain == donut::engine::MaterialDomain::TransmissiveAlphaTested))
+            {
+                hasAlphaTested = true;
+                cutoff = geom->material->alphaCutoff;
+                alphaTex = geom->material->opacityTexture
+                    ? geom->material->opacityTexture
+                    : geom->material->baseOrDiffuseTexture;
+                break;
+            }
+        }
+
+        if (!hasAlphaTested || !alphaTex || !alphaTex->texture)
+            continue;
+
+        // Need CPU-side data to bake OMM
+        if (buffers.indexData.empty() || buffers.texcoord1Data.empty())
+            continue;
+
+        OMMMeshCpuCacheEntry entry;
+        entry.meshInfo = mesh.get();
+        entry.alphaCutoff = cutoff;
+        entry.hasAlphaTexture = true;
+        entry.alphaTexture = alphaTex;
+
+        const uint32_t meshIdxStart  = mesh->indexOffset;
+        const uint32_t meshIdxCount  = mesh->totalIndices;
+        const uint32_t meshVertBase  = mesh->vertexOffset;
+        const uint32_t meshVertCount = mesh->totalVertices;
+
+        // Cache index data element-by-element (vector copy of BufferGroup fields
+        // triggers ACCESS_VIOLATION due to Donut's custom allocator).
+        // Rebase indices to be 0-based into the mesh's UV slice.
+        if (meshIdxCount > 0 && meshIdxStart + meshIdxCount <= buffers.indexData.size())
+        {
+            entry.indexData.reserve(meshIdxCount);
+            for (uint32_t i = 0; i < meshIdxCount; ++i)
+            {
+                uint32_t idx = buffers.indexData[meshIdxStart + i];
+                entry.indexData.push_back(idx >= meshVertBase ? idx - meshVertBase : idx);
+            }
+        }
+
+        // Cache texcoord data (mesh's slice within BufferGroup::texcoord1Data)
+        if (meshVertCount > 0 && meshVertBase + meshVertCount <= buffers.texcoord1Data.size())
+        {
+            entry.texcoordData.reserve(meshVertCount);
+            for (uint32_t v = 0; v < meshVertCount; ++v)
+                entry.texcoordData.push_back(buffers.texcoord1Data[meshVertBase + v]);
+        }
+
+        if (!entry.indexData.empty() && !entry.texcoordData.empty())
+            cache[mesh.get()] = std::move(entry);
+    }
+
+    return cache;
 }
 
 } // namespace rtxns::shadow

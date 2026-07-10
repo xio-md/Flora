@@ -36,7 +36,7 @@ cmake --build build --config Release --target DonutRenderPyNative
 | 依赖 | 版本/路径 | 状态 |
 |------|----------|------|
 | Vulkan SDK | `C:\VulkanSDK\1.4.350.0` | ✅ 已安装 |
-| GPU | NVIDIA RTX 5080 (Vulkan 1.4) | ✅ 支持 RT + OMM |
+| GPU | NVIDIA RTX 5090D (32GB, Vulkan 1.4) | ✅ 支持 RT + OMM |
 | CMake | VS2022 自带 / 独立安装 | ✅ |
 | Donut | `D:\RTXNS\external\donut` | ❌ **需要 git submodule update** |
 | NVRHI (Donut 子模块) | `D:\RTXNS\external\donut\nvrhi\` | ❌ 随 Donut 拉取 |
@@ -205,7 +205,7 @@ VkPhysicalDeviceProperties2 props2 = {
 };
 vkGetPhysicalDeviceProperties2(physicalDevice, &props2);
 
-// 关键限制参数 (RTX 5080 典型值):
+// 关键限制参数 (RTX 5090D 典型值):
 // - rtPipelineProps.shaderGroupHandleSize = 32
 // - rtPipelineProps.maxRayRecursionDepth >= 1
 // - asProps.minAccelerationStructureScratchOffsetAlignment = 256

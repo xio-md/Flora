@@ -39,6 +39,8 @@ add_library(${LIB_NAME} STATIC
     AccelerationStructure.cpp
     RayTracedShadowPass.h
     RayTracedShadowPass.cpp
+    OMMBaker.h
+    OMMBaker.cpp
 )
 
 target_include_directories(${LIB_NAME}
@@ -51,7 +53,17 @@ target_include_directories(${LIB_NAME}
 target_link_libraries(${LIB_NAME}
     PUBLIC
         donut_render
-        nvrhi)
+        nvrhi
+    PRIVATE
+        "${CMAKE_SOURCE_DIR}/../OMM/build/libraries/omm-lib/$<CONFIG>/omm-bake.lib")
+
+target_include_directories(${LIB_NAME}
+    PRIVATE
+        "${CMAKE_SOURCE_DIR}/../OMM/libraries/omm-lib/include")
+
+target_compile_definitions(${LIB_NAME}
+    PRIVATE
+        VK_KHR_OPACITY_MICROMAP=1)
 
 add_dependencies(${LIB_NAME} ${LIB_NAME}_shaders)
 

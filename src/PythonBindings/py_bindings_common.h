@@ -47,6 +47,35 @@ inline void bind_rtxns_headless_pbr_module(py::module_ &m)
         .def("enable_rt_shadows",
             &rtxns::python::HeadlessPbrScene::enable_rt_shadows,
             py::arg("enable"))
+        .def("enable_shadow_blur",
+            &rtxns::python::HeadlessPbrScene::enable_shadow_blur,
+            py::arg("enable"))
+        .def("enable_omm",
+            &rtxns::python::HeadlessPbrScene::enable_omm,
+            py::arg("enable"))
+        .def("set_shadow_samples",
+            &rtxns::python::HeadlessPbrScene::set_shadow_samples,
+            py::arg("n"))
+        .def("enable_omm_stress",
+            &rtxns::python::HeadlessPbrScene::enable_omm_stress,
+            py::arg("enable"))
+        .def("set_omm_config",
+            &rtxns::python::HeadlessPbrScene::set_omm_config,
+            py::arg("subdiv"), py::arg("format"))
+        .def("load_omm_cache",
+            [](rtxns::python::HeadlessPbrScene &self, const std::string& path)
+            {
+                py::gil_scoped_release release;
+                return self.load_omm_cache(path);
+            },
+            py::arg("path"))
+        .def("save_omm_cache",
+            [](rtxns::python::HeadlessPbrScene &self, const std::string& path)
+            {
+                py::gil_scoped_release release;
+                return self.save_omm_cache(path);
+            },
+            py::arg("path"))
         .def("render_frame",
             [](rtxns::python::HeadlessPbrScene &self)
             {
@@ -59,6 +88,22 @@ inline void bind_rtxns_headless_pbr_module(py::module_ &m)
                 return py::bytes(
                     reinterpret_cast<const char *>(pixels.data()),
                     static_cast<py::ssize_t>(pixels.size()));
+            })
+        .def("get_last_frame_stats",
+            [](const rtxns::python::HeadlessPbrScene &self)
+            {
+                const auto& s = self.get_last_frame_stats();
+                py::dict d;
+                d["total_ms"] = s.total_ms;
+                d["raster_ms"] = s.raster_ms;
+                d["blas_build_ms"] = s.blas_build_ms;
+                d["tlas_build_ms"] = s.tlas_build_ms;
+                d["shadow_ray_ms"] = s.shadow_ray_ms;
+                d["composite_ms"] = s.composite_ms;
+                d["readback_ms"] = s.readback_ms;
+                d["rt_shadows_enabled"] = s.rt_shadows_enabled;
+                d["as_built_this_frame"] = s.as_built_this_frame;
+                return d;
             })
         .def_property_readonly("width", &rtxns::python::HeadlessPbrScene::width)
         .def_property_readonly("height", &rtxns::python::HeadlessPbrScene::height);

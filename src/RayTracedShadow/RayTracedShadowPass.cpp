@@ -4,6 +4,7 @@
 #if DONUT_WITH_VULKAN
 #include "shaders/shadow_rayquery_cs.spirv.h"
 #include "shaders/shadow_composite_cs.spirv.h"
+#include "shaders/shadow_blur_cs.spirv.h"
 #endif
 
 namespace rtxns::shadow {
@@ -31,6 +32,12 @@ bool RayTracedShadowPass::initialize(
             g_shadow_composite_cs_spirv,
             sizeof(g_shadow_composite_cs_spirv));
         if (!m_compositeShader)
+            return false;
+
+        m_blurShader = device->createShader(shaderDesc,
+            g_shadow_blur_cs_spirv,
+            sizeof(g_shadow_blur_cs_spirv));
+        if (!m_blurShader)
             return false;
     }
 #else
@@ -99,6 +106,29 @@ bool RayTracedShadowPass::initialize(
         m_compositePipeline = device->createComputePipeline(pipelineDesc);
 
         if (!m_compositePipeline)
+            return false;
+    }
+
+    // ---- Shadow blur binding layout ----
+    // t0: shadow input, t1: depth, u0: shadow output, t263: ShadowConstants
+    {
+        nvrhi::BindingLayoutDesc layoutDesc;
+        layoutDesc.visibility = nvrhi::ShaderType::Compute;
+        layoutDesc.registerSpace = 0;
+
+        layoutDesc.addItem(nvrhi::BindingLayoutItem::Texture_SRV(0));   // t0 shadow
+        layoutDesc.addItem(nvrhi::BindingLayoutItem::Texture_SRV(1));   // t1 depth
+        layoutDesc.addItem(nvrhi::BindingLayoutItem::Texture_UAV(0));   // u0 output
+        layoutDesc.addItem(nvrhi::BindingLayoutItem::StructuredBuffer_SRV(263)); // t263
+
+        m_blurBindingLayout = device->createBindingLayout(layoutDesc);
+
+        nvrhi::ComputePipelineDesc pipelineDesc;
+        pipelineDesc.CS = m_blurShader;
+        pipelineDesc.bindingLayouts = { m_blurBindingLayout };
+        m_blurPipeline = device->createComputePipeline(pipelineDesc);
+
+        if (!m_blurPipeline)
             return false;
     }
 
@@ -261,6 +291,47 @@ void RayTracedShadowPass::compositeShadow(
 
     uint32_t groupsX = (width + 7) / 8;
     uint32_t groupsY = (height + 7) / 8;
+    commandList->dispatch(groupsX, groupsY, 1);
+}
+
+void RayTracedShadowPass::blurShadow(
+    nvrhi::ICommandList* commandList,
+    nvrhi::ITexture* shadowInput,
+    nvrhi::ITexture* shadowOutput,
+    nvrhi::ITexture* depthTexture,
+    const ShadowConstants& constants)
+{
+    if (!m_blurPipeline)
+        return;
+
+    commandList->writeBuffer(m_shadowConstantBuffer, &constants, sizeof(ShadowConstants));
+    commandList->setBufferState(m_shadowConstantBuffer, nvrhi::ResourceStates::ShaderResource);
+
+    nvrhi::BindingSetDesc setDesc;
+    setDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(0, shadowInput));
+    setDesc.addItem(nvrhi::BindingSetItem::Texture_SRV(1, depthTexture));
+    setDesc.addItem(nvrhi::BindingSetItem::Texture_UAV(0, shadowOutput));
+    setDesc.addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(263, m_shadowConstantBuffer));
+
+    m_blurBindingSet = m_device->createBindingSet(setDesc, m_blurBindingLayout);
+    if (!m_blurBindingSet)
+        return;
+
+    commandList->setTextureState(shadowInput, nvrhi::AllSubresources,
+        nvrhi::ResourceStates::ShaderResource);
+    commandList->setTextureState(depthTexture, nvrhi::AllSubresources,
+        nvrhi::ResourceStates::ShaderResource);
+    commandList->setTextureState(shadowOutput, nvrhi::AllSubresources,
+        nvrhi::ResourceStates::UnorderedAccess);
+    commandList->commitBarriers();
+
+    nvrhi::ComputeState state;
+    state.pipeline = m_blurPipeline;
+    state.bindings = { m_blurBindingSet };
+    commandList->setComputeState(state);
+
+    uint32_t groupsX = (uint32_t(constants.imageSize.x) + 7) / 8;
+    uint32_t groupsY = (uint32_t(constants.imageSize.y) + 7) / 8;
     commandList->dispatch(groupsX, groupsY, 1);
 }
 
