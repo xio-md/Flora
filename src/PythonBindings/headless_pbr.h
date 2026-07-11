@@ -17,6 +17,19 @@ namespace rtxns::python
         bool enable_debug = false;
     };
 
+    /// Camera descriptor used by add_camera / set_camera(index).
+    struct CameraDesc
+    {
+        std::array<float, 3> position{};
+        std::array<float, 3> target{};
+        std::array<float, 3> up{0.0f, 1.0f, 0.0f};
+        float fov_degrees = 60.0f;
+        uint32_t width = 1024;
+        uint32_t height = 768;
+        float z_near = 0.1f;
+        float z_far = 1000.0f;
+    };
+
     class RendererContext;
 
     class HeadlessPbrScene
@@ -26,6 +39,8 @@ namespace rtxns::python
         ~HeadlessPbrScene();
 
         void load_scene(const std::filesystem::path& scene_path);
+
+        // --- Legacy single-camera API (backward-compatible, writes camera 0) ---
         void set_camera(
             const std::array<float, 3>& position,
             const std::array<float, 3>& target,
@@ -35,6 +50,42 @@ namespace rtxns::python
             uint32_t height,
             float z_near,
             float z_far);
+
+        [[nodiscard]] std::vector<uint8_t> render_frame();
+
+        // --- Multi-camera API (new) ---
+        uint32_t add_camera(
+            const std::array<float, 3>& position,
+            const std::array<float, 3>& target,
+            const std::array<float, 3>& up,
+            float fov_degrees,
+            uint32_t width,
+            uint32_t height,
+            float z_near = 0.1f,
+            float z_far = 1000.0f);
+
+        void set_camera_at(
+            uint32_t index,
+            const std::array<float, 3>& position,
+            const std::array<float, 3>& target,
+            const std::array<float, 3>& up,
+            float fov_degrees,
+            uint32_t width,
+            uint32_t height,
+            float z_near = 0.1f,
+            float z_far = 1000.0f);
+
+        [[nodiscard]] uint32_t camera_count() const noexcept;
+
+        [[nodiscard]] std::vector<uint8_t> render_frame(uint32_t camera_index);
+
+        [[nodiscard]] std::vector<std::vector<uint8_t>> render_frame_batch(const std::vector<uint32_t>& camera_indices);
+
+        // --- Async batch API (Week 3) ---
+        [[nodiscard]] uint64_t submit_frame_batch(const std::vector<uint32_t>& camera_indices);
+        [[nodiscard]] bool is_batch_ready(uint64_t token) const;
+        [[nodiscard]] std::vector<std::vector<uint8_t>> read_frame_batch(uint64_t token);
+
         void set_ambient(
             const std::array<float, 3>& top_rgb,
             const std::array<float, 3>& bottom_rgb);
@@ -56,7 +107,6 @@ namespace rtxns::python
         bool load_omm_cache(const std::string& path);
         bool save_omm_cache(const std::string& path);
 
-        [[nodiscard]] std::vector<uint8_t> render_frame();
         [[nodiscard]] uint32_t width() const noexcept;
         [[nodiscard]] uint32_t height() const noexcept;
 

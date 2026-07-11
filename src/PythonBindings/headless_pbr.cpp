@@ -200,6 +200,39 @@ namespace rtxns::python
         bool m_ommSupported = false;
     };
 
+    // TODO(week2): Move to render_view_slot.h after stabilization.
+    struct RenderViewSlot
+    {
+        CameraDesc desc;
+        donut::app::FirstPersonCamera camera;
+        PlanarView view;
+
+        uint32_t width = 0;
+        uint32_t height = 0;
+        float z_near = 0.1f;
+        float z_far = 1000.0f;
+
+        std::shared_ptr<FramebufferFactory> framebufferFactory;
+        nvrhi::TextureHandle colorTarget;
+        nvrhi::TextureHandle depthTarget;
+        nvrhi::StagingTextureHandle readbackTarget; // legacy, keep for compat
+
+        nvrhi::TextureHandle shadowTarget;
+        nvrhi::TextureHandle shadowBlurTemp;
+        nvrhi::TextureHandle compositeOutput;
+        nvrhi::TextureHandle litColorSRV;
+
+        // Week 2: keep per-dispatch binding sets alive until command list finishes.
+        std::vector<nvrhi::BindingSetHandle> frameBindingScratch;
+
+        // Week 3: readback ring for async pipeline.
+        struct ReadbackRingSlot { nvrhi::StagingTextureHandle staging; };
+        std::array<ReadbackRingSlot, 2> readbackRing;
+        uint32_t ringWriteIdx = 0;  // which ring slot to write to next
+
+        HeadlessPbrScene::FrameStats lastStats{};
+    };
+
     class HeadlessPbrScene::Impl
     {
     public:
@@ -211,15 +244,22 @@ namespace rtxns::python
             m_forward_pass = std::make_unique<ForwardShadingPass>(m_context->device(), m_context->common_passes());
             m_forward_pass->Init(*m_context->shader_factory(), ForwardShadingPass::CreateParameters{});
 
-            set_camera(
-                {0.0f, 0.5f, 3.0f},
-                {0.0f, 0.0f, 0.0f},
-                {0.0f, 1.0f, 0.0f},
-                45.0f,
-                512,
-                512,
-                0.1f,
-                1000.0f);
+            // Create default camera 0 slot and use legacy path directly.
+            m_views.emplace_back();
+
+            // Legacy path: set camera 0 directly (bypass set_camera_desc bridge).
+            {
+                CameraDesc desc;
+                desc.position = {0.0f, 0.5f, 3.0f};
+                desc.target = {0.0f, 0.0f, 0.0f};
+                desc.up = {0.0f, 1.0f, 0.0f};
+                desc.fov_degrees = 45.0f;
+                desc.width = 512;
+                desc.height = 512;
+                desc.z_near = 0.1f;
+                desc.z_far = 1000.0f;
+                set_camera_desc(0, desc);
+            }
         }
 
         ~Impl()
@@ -335,6 +375,62 @@ namespace rtxns::python
             m_scene->FinishedLoading(m_frame_index);
         }
 
+        void set_camera_desc(uint32_t index, const CameraDesc& desc)
+        {
+            if (desc.width == 0 || desc.height == 0)
+                throw std::runtime_error("Camera resolution must be positive.");
+            if (desc.z_near <= 0.0f || desc.z_far <= desc.z_near)
+                throw std::runtime_error("Camera clipping planes are invalid.");
+            if (desc.fov_degrees <= 0.0f || desc.fov_degrees >= 179.0f)
+                throw std::runtime_error("Camera FOV must be in the range (0, 179).");
+
+            const auto pos = to_float3(desc.position);
+            const auto tgt = to_float3(desc.target);
+            const auto cam_up = normalize_or_throw(to_float3(desc.up), "up");
+
+            if (dm::length(tgt - pos) <= 1.0e-6f)
+                throw std::runtime_error("Camera target must differ from the camera position.");
+
+            if (index >= m_views.size())
+                throw std::out_of_range("Camera index out of range.");
+
+            auto& slot = m_views[index];
+            slot.desc = desc;
+            resize_slot_targets(slot, desc.width, desc.height);
+
+            slot.width = desc.width;
+            slot.height = desc.height;
+            slot.z_near = desc.z_near;
+            slot.z_far = desc.z_far;
+
+            slot.camera.LookAt(pos, tgt, cam_up);
+            const float aspect = static_cast<float>(desc.width) / static_cast<float>(desc.height);
+            slot.view.SetViewport(nvrhi::Viewport(0.0f, static_cast<float>(desc.width), 0.0f, static_cast<float>(desc.height), 0.0f, 1.0f));
+            slot.view.SetMatrices(
+                slot.camera.GetWorldToViewMatrix(),
+                dm::perspProjD3DStyle(radians(desc.fov_degrees), aspect, desc.z_near, desc.z_far));
+            slot.view.UpdateCache();
+
+            // Keep legacy members in sync for camera 0 until Patch D refactor.
+            if (index == 0) {
+                m_width = desc.width;
+                m_height = desc.height;
+                m_z_near = desc.z_near;
+                m_z_far = desc.z_far;
+                m_framebuffer_factory = slot.framebufferFactory;
+                m_color_target = slot.colorTarget;
+                m_depth_target = slot.depthTarget;
+                m_readback_target = slot.readbackTarget;
+                m_shadowTarget = slot.shadowTarget;
+                m_shadowBlurTemp = slot.shadowBlurTemp;
+                m_compositeOutput = slot.compositeOutput;
+                m_litColorSRV = slot.litColorSRV;
+                m_view = slot.view;
+                // FirstPersonCamera is not copyable; use LookAt.
+                m_camera.LookAt(pos, tgt, cam_up);
+            }
+        }
+
         void set_camera(
             const std::array<float, 3>& position,
             const std::array<float, 3>& target,
@@ -345,43 +441,16 @@ namespace rtxns::python
             float z_near,
             float z_far)
         {
-            if (width == 0 || height == 0)
-            {
-                throw std::runtime_error("Camera resolution must be positive.");
-            }
-            if (z_near <= 0.0f || z_far <= z_near)
-            {
-                throw std::runtime_error("Camera clipping planes are invalid.");
-            }
-            if (fov_degrees <= 0.0f || fov_degrees >= 179.0f)
-            {
-                throw std::runtime_error("Camera FOV must be in the range (0, 179).");
-            }
-
-            const auto pos = to_float3(position);
-            const auto tgt = to_float3(target);
-            const auto cam_up = normalize_or_throw(to_float3(up), "up");
-
-            if (dm::length(tgt - pos) <= 1.0e-6f)
-            {
-                throw std::runtime_error("Camera target must differ from the camera position.");
-            }
-
-            resize_targets(width, height);
-
-            m_width = width;
-            m_height = height;
-            m_z_near = z_near;
-            m_z_far = z_far;
-
-            m_camera.LookAt(pos, tgt, cam_up);
-
-            const float aspect = static_cast<float>(width) / static_cast<float>(height);
-            m_view.SetViewport(nvrhi::Viewport(0.0f, static_cast<float>(width), 0.0f, static_cast<float>(height), 0.0f, 1.0f));
-            m_view.SetMatrices(
-                m_camera.GetWorldToViewMatrix(),
-                dm::perspProjD3DStyle(radians(fov_degrees), aspect, z_near, z_far));
-            m_view.UpdateCache();
+            CameraDesc desc;
+            desc.position = position;
+            desc.target = target;
+            desc.up = up;
+            desc.fov_degrees = fov_degrees;
+            desc.width = width;
+            desc.height = height;
+            desc.z_near = z_near;
+            desc.z_far = z_far;
+            set_camera_desc(0, desc);
         }
 
         void set_ambient(
@@ -1192,6 +1261,413 @@ namespace rtxns::python
             return m_lastStats;
         }
 
+        // --- Multi-camera helpers (Week 1) ---
+
+        uint32_t add_camera_slot(const CameraDesc& desc)
+        {
+            uint32_t index = static_cast<uint32_t>(m_views.size());
+            m_views.emplace_back();
+            set_camera_desc(index, desc);
+            return index;
+        }
+
+        uint32_t camera_count_impl() const noexcept
+        {
+            return static_cast<uint32_t>(m_views.size());
+        }
+
+        /// Sync legacy members from a camera slot, then record per-view work into cmdList.
+        /// If use_ring is true, copy output to the slot's readback ring instead of legacy readbackTarget.
+        void sync_and_record_view(nvrhi::ICommandList* cmdList, uint32_t camera_index, bool first_view, bool use_ring = false)
+        {
+            if (camera_index >= m_views.size())
+                throw std::out_of_range("Camera index out of range.");
+
+            // Always sync legacy members from this camera's slot.
+            {
+                auto& slot = m_views[camera_index];
+                m_width = slot.width; m_height = slot.height;
+                m_z_near = slot.z_near; m_z_far = slot.z_far;
+                m_framebuffer_factory = slot.framebufferFactory;
+                m_color_target = slot.colorTarget; m_depth_target = slot.depthTarget;
+                m_readback_target = use_ring
+                    ? slot.readbackRing[slot.ringWriteIdx].staging
+                    : slot.readbackTarget;
+                m_shadowTarget = slot.shadowTarget; m_shadowBlurTemp = slot.shadowBlurTemp;
+                m_compositeOutput = slot.compositeOutput; m_litColorSRV = slot.litColorSRV;
+                m_view = slot.view;
+                const auto pos = to_float3(slot.desc.position);
+                const auto tgt = to_float3(slot.desc.target);
+                const auto cam_up = normalize_or_throw(to_float3(slot.desc.up), "up");
+                m_camera.LookAt(pos, tgt, cam_up);
+            }
+
+            // Record per-view work into the shared command list.
+            using Clock = std::chrono::high_resolution_clock;
+
+            auto* framebuffer = m_framebuffer_factory->GetFramebuffer(m_view);
+            nvrhi::utils::ClearColorAttachment(cmdList, framebuffer, 0, nvrhi::Color(0.0f));
+            cmdList->clearDepthStencilTexture(m_depth_target, nvrhi::AllSubresources, true, 1.0f, false, 0);
+
+            // ---- Raster ----
+            ForwardShadingPass::Context pass_context;
+            const std::vector<std::shared_ptr<donut::engine::LightProbe>> light_probes;
+            m_forward_pass->PrepareLights(pass_context, cmdList,
+                m_scene->GetSceneGraph()->GetLights(), m_ambient_top, m_ambient_bottom, light_probes);
+
+            donut::render::InstancedOpaqueDrawStrategy opaque_draws;
+            donut::render::RenderCompositeView(cmdList, &m_view, nullptr, *m_framebuffer_factory,
+                m_scene->GetSceneGraph()->GetRootNode(), opaque_draws, *m_forward_pass, pass_context, "Opaque");
+            donut::render::TransparentDrawStrategy transparent_draws;
+            donut::render::RenderCompositeView(cmdList, &m_view, nullptr, *m_framebuffer_factory,
+                m_scene->GetSceneGraph()->GetRootNode(), transparent_draws, *m_forward_pass, pass_context, "Transparent");
+
+            // ---- RT Shadow (if enabled) ----
+            bool useRTShadow = m_rtShadowsEnabled && m_rtShadowPass && m_rtShadowPass->isValid();
+            if (useRTShadow && m_shadowAS.tlas)
+            {
+                dm::float3 sunDir = dm::normalize(dm::float3(1.0f, 1.0f, 0.5f));
+                if (!m_scene->GetSceneGraph()->GetLights().empty()) {
+                    auto firstLight = m_scene->GetSceneGraph()->GetLights().front();
+                    if (auto dirLight = std::dynamic_pointer_cast<DirectionalLight>(firstLight)) {
+                        dm::float3 ld(float(dirLight->GetDirection().x), float(dirLight->GetDirection().y), float(dirLight->GetDirection().z));
+                        sunDir = dm::normalize(-ld);
+                    }
+                }
+                rtxns::shadow::ShadowConstants sc;
+                sc.sunDirection = sunDir; sc.sunJitter = 0.005f;
+                sc.invViewProj = m_view.GetInverseViewProjectionMatrix();
+                sc.invProj = m_view.GetInverseProjectionMatrix(false);
+                sc.invView = dm::affineToHomogeneous(m_view.GetInverseViewMatrix());
+                sc.projParams = dm::float2(m_z_near, m_z_far);
+                sc.imageSize = dm::float2(float(m_width), float(m_height));
+                sc.shadowEnabled = 1; sc.shadowRayMask = 0xFFu; sc.shadowSamples = m_shadowSamples;
+
+                nvrhi::Color clearBlack(0,0,0,0);
+                cmdList->clearTextureFloat(m_shadowTarget, nvrhi::AllSubresources, clearBlack);
+                m_rtShadowPass->renderShadow(cmdList, m_shadowAS.tlas, sc, m_depth_target, m_shadowTarget);
+                if (m_blurEnabled) {
+                    sc.blurDirection = 0;
+                    m_rtShadowPass->blurShadow(cmdList, m_shadowTarget, m_shadowBlurTemp, m_depth_target, sc);
+                    sc.blurDirection = 1;
+                    m_rtShadowPass->blurShadow(cmdList, m_shadowBlurTemp, m_shadowTarget, m_depth_target, sc);
+                }
+            }
+            else if (m_shadowTarget) {
+                cmdList->setTextureState(m_shadowTarget, nvrhi::AllSubresources, nvrhi::ResourceStates::UnorderedAccess);
+                cmdList->commitBarriers();
+                cmdList->clearTextureFloat(m_shadowTarget, nvrhi::AllSubresources, nvrhi::Color(1,1,1,1));
+            }
+
+            // ---- Composite + Copy to readback ----
+            if (m_rtShadowPass && m_rtShadowPass->isValid())
+            {
+                cmdList->setTextureState(m_color_target, nvrhi::AllSubresources, nvrhi::ResourceStates::CopySource);
+                cmdList->setTextureState(m_litColorSRV, nvrhi::AllSubresources, nvrhi::ResourceStates::CopyDest);
+                cmdList->commitBarriers();
+                cmdList->copyTexture(m_litColorSRV, nvrhi::TextureSlice(), m_color_target, nvrhi::TextureSlice());
+                cmdList->setTextureState(m_litColorSRV, nvrhi::AllSubresources, nvrhi::ResourceStates::ShaderResource);
+                cmdList->setTextureState(m_color_target, nvrhi::AllSubresources, nvrhi::ResourceStates::RenderTarget);
+                cmdList->commitBarriers();
+
+                m_rtShadowPass->compositeShadow(cmdList, m_litColorSRV, m_shadowTarget, m_compositeOutput, m_width, m_height);
+                cmdList->setTextureState(m_compositeOutput, nvrhi::AllSubresources, nvrhi::ResourceStates::CopySource);
+                cmdList->commitBarriers();
+                cmdList->copyTexture(m_readback_target, nvrhi::TextureSlice(), m_compositeOutput, nvrhi::TextureSlice());
+                cmdList->setTextureState(m_compositeOutput, nvrhi::AllSubresources, nvrhi::ResourceStates::UnorderedAccess);
+            }
+            else
+            {
+                cmdList->setTextureState(m_color_target, nvrhi::AllSubresources, nvrhi::ResourceStates::CopySource);
+                cmdList->commitBarriers();
+                cmdList->copyTexture(m_readback_target, nvrhi::TextureSlice(), m_color_target, nvrhi::TextureSlice());
+                cmdList->setTextureState(m_color_target, nvrhi::AllSubresources, nvrhi::ResourceStates::RenderTarget);
+            }
+            cmdList->commitBarriers();
+        }
+
+        // --- Shared AS build/update (Week 3 fix, used by all batch paths) ---
+
+        void record_or_build_shadow_as(nvrhi::ICommandList* cmdList)
+        {
+            bool useRTShadow = m_rtShadowsEnabled && m_rtShadowPass && m_rtShadowPass->isValid();
+            if (!useRTShadow) return;
+
+            if (!m_shadowAS.built)
+            {
+                // First frame: build BLAS + TLAS from scratch
+                auto* device = m_context->device();
+                m_blasInputs = rtxns::shadow::SceneGeometryProvider::extractFromScene(*m_scene->GetSceneGraph());
+
+                // OMM stress mode
+                if (m_ommStress)
+                    for (auto& inp : m_blasInputs) inp.forceNonOpaque = true;
+
+                if (!m_blasInputs.empty())
+                {
+                    m_shadowAS.blasList = rtxns::shadow::AccelerationStructure::buildBLASes(device, m_blasInputs);
+                    auto instances = rtxns::shadow::AccelerationStructure::buildInstanceDescs(
+                        *m_scene->GetSceneGraph(), m_shadowAS.blasList, m_blasInputs);
+                    m_shadowAS.instances = instances;
+
+                    if (!instances.empty())
+                    {
+                        nvrhi::rt::AccelStructDesc tlasDesc;
+                        tlasDesc.setTopLevelMaxInstances(instances.size());
+                        tlasDesc.setBuildFlags(
+                            nvrhi::rt::AccelStructBuildFlags::PreferFastTrace |
+                            nvrhi::rt::AccelStructBuildFlags::AllowUpdate);
+                        tlasDesc.setDebugName("TLAS");
+
+                        m_shadowAS.tlas = device->createAccelStruct(tlasDesc);
+                        if (m_shadowAS.tlas)
+                        {
+                            // Build TLAS on the main command list (batch-compatible)
+                            cmdList->buildTopLevelAccelStruct(
+                                m_shadowAS.tlas, instances.data(), instances.size(),
+                                nvrhi::rt::AccelStructBuildFlags::PreferFastTrace);
+                        }
+                    }
+                }
+
+                m_shadowAS.built = (m_shadowAS.tlas != nullptr);
+                m_lastStats.blas_build_ms = 0;
+                m_lastStats.as_built_this_frame = true;
+
+                // Note: OMM baking and cache logic deferred to render_frame() single-camera path.
+                // Full integration of OMM into batch path requires async OMM bake or pre-baked cache.
+            }
+            else
+            {
+                // Subsequent frames: only update TLAS instances
+                auto instances = rtxns::shadow::AccelerationStructure::buildInstanceDescs(
+                    *m_scene->GetSceneGraph(), m_shadowAS.blasList, m_blasInputs);
+                m_shadowAS.instances = instances;
+                rtxns::shadow::AccelerationStructure::updateTLAS(cmdList, m_shadowAS, instances);
+            }
+        }
+
+        // --- Async batch API (Week 3) ---
+
+        uint64_t submit_frame_batch_impl(const std::vector<uint32_t>& indices)
+        {
+            if (indices.empty()) return 0;
+            for (auto idx : indices)
+                if (idx >= m_views.size()) throw std::out_of_range("Camera index out of range.");
+            if (!m_scene) throw std::runtime_error("No scene loaded.");
+            auto* device = m_context->device();
+
+            // Lazily init shadow pass
+            if (!m_rtShadowPass && m_context) {
+                m_rtShadowPass = std::make_unique<rtxns::shadow::RayTracedShadowPass>();
+                m_rtShadowPass->initialize(device, m_context->shader_factory().get(), 0, 0);
+            }
+
+            // Create command list + record batch
+            auto cmdList = device->createCommandList();
+            cmdList->open();
+            m_scene->Refresh(cmdList, m_frame_index++);
+
+            if (m_scene->GetSceneGraph()->GetLights().empty())
+                ensure_default_light_attached();
+
+            // Shadow AS build/update (shared, handles first-frame BLAS + TLAS)
+            record_or_build_shadow_as(cmdList);
+
+            // Per-camera recording (writes to ring slot)
+            for (auto idx : indices)
+                sync_and_record_view(cmdList, idx, idx == indices.front(), true /*use_ring*/);
+
+            cmdList->close();
+
+            uint64_t instance = device->executeCommandList(cmdList);
+
+            // Set event query AFTER execute to mark this batch's submission point
+            auto query = device->createEventQuery();
+            device->setEventQuery(query, nvrhi::CommandQueue::Graphics);
+
+            // Store pending batch
+            PendingBatch pending;
+            pending.token = instance;
+            pending.cameraIndices = indices;
+            pending.query = query;
+            // Record ring indices for each camera at submission time
+            for (auto idx : indices)
+                pending.ringIndices.push_back(m_views[idx].ringWriteIdx);
+
+            m_pendingBatches.push_back(pending);
+
+            // Advance ring write index for each camera
+            for (auto idx : indices)
+                m_views[idx].ringWriteIdx = (m_views[idx].ringWriteIdx + 1) % 2;
+
+            return instance;
+        }
+
+        bool is_batch_ready_impl(uint64_t token) const
+        {
+            if (!m_context) return false;
+            auto* device = m_context->device();
+            for (const auto& pb : m_pendingBatches) {
+                if (pb.token == token)
+                    return device->pollEventQuery(pb.query);
+            }
+            return true; // unknown token: assume ready
+        }
+
+        std::vector<std::vector<uint8_t>> read_frame_batch_impl(uint64_t token)
+        {
+            auto* device = m_context->device();
+
+            // Find and remove the pending batch
+            PendingBatch found;
+            bool matched = false;
+            auto it = m_pendingBatches.begin();
+            for (; it != m_pendingBatches.end(); ++it) {
+                if (it->token == token) { found = *it; matched = true; break; }
+            }
+            if (!matched)
+                throw std::runtime_error("Unknown batch token.");
+
+            // Wait for GPU to finish this submission
+            device->waitEventQuery(found.query);
+            device->resetEventQuery(found.query);
+            m_pendingBatches.erase(it);
+
+            // Readback using per-camera ring indices saved at submit time
+            std::vector<std::vector<uint8_t>> outputs;
+            outputs.reserve(found.cameraIndices.size());
+            for (size_t i = 0; i < found.cameraIndices.size(); ++i) {
+                auto idx = found.cameraIndices[i];
+                uint32_t ringIdx = (i < found.ringIndices.size())
+                    ? found.ringIndices[i] : 0u;
+                auto& slot = m_views[idx];
+                auto& ringSlot = slot.readbackRing[ringIdx].staging;
+                if (!ringSlot)
+                    throw std::runtime_error("Readback ring slot is null.");
+
+                size_t row_pitch = 0;
+                const auto* mapped = static_cast<const uint8_t*>(
+                    device->mapStagingTexture(ringSlot, nvrhi::TextureSlice(), nvrhi::CpuAccessMode::Read, &row_pitch));
+                if (!mapped) throw std::runtime_error("Failed to map readback ring texture.");
+
+                const size_t row_bytes = static_cast<size_t>(slot.width) * 4u;
+                std::vector<uint8_t> pixels(row_bytes * slot.height);
+                for (uint32_t row = 0; row < slot.height; ++row)
+                    std::copy_n(mapped + row_pitch * row, row_bytes, pixels.data() + row_bytes * row);
+                device->unmapStagingTexture(ringSlot);
+                outputs.push_back(std::move(pixels));
+            }
+            return outputs;
+        }
+
+        /// Readback one view slot and return pixel bytes.
+        std::vector<uint8_t> readback_slot(RenderViewSlot& slot)
+        {
+            auto* device = m_context->device();
+            size_t row_pitch = 0;
+            const auto* mapped = static_cast<const uint8_t*>(
+                device->mapStagingTexture(slot.readbackTarget, nvrhi::TextureSlice(), nvrhi::CpuAccessMode::Read, &row_pitch));
+            if (!mapped) throw std::runtime_error("Failed to map readback texture.");
+
+            const size_t row_bytes = static_cast<size_t>(slot.width) * 4u;
+            std::vector<uint8_t> pixels(row_bytes * slot.height);
+            for (uint32_t row = 0; row < slot.height; ++row)
+                std::copy_n(mapped + row_pitch * row, row_bytes, pixels.data() + row_bytes * row);
+            device->unmapStagingTexture(slot.readbackTarget);
+            return pixels;
+        }
+
+        /// Single-command-list batch rendering (Week 2 Patch D).
+        std::vector<std::vector<uint8_t>> render_frame_batch_v2(const std::vector<uint32_t>& indices)
+        {
+            if (indices.empty()) return {};
+            for (auto idx : indices)
+                if (idx >= m_views.size()) throw std::out_of_range("Camera index out of range.");
+
+            if (!m_scene) throw std::runtime_error("No scene has been loaded.");
+            auto* device = m_context->device();
+
+            // --- Build RayTracedShadowPass lazily (once) ---
+            if (!m_rtShadowPass && m_context) {
+                m_rtShadowPass = std::make_unique<rtxns::shadow::RayTracedShadowPass>();
+                m_rtShadowPass->initialize(device, m_context->shader_factory().get(), 0, 0);
+            }
+
+            // --- Create one command list for the entire batch ---
+            auto cmdList = device->createCommandList();
+            cmdList->open();
+
+            // --- Shared work: Scene::Refresh + ensure light (once per batch) ---
+            m_scene->Refresh(cmdList, m_frame_index++);
+            if (m_scene->GetSceneGraph()->GetLights().empty())
+                ensure_default_light_attached();
+
+            // --- RT shadow AS build/update (shared function) ---
+            m_lastStats.rt_shadows_enabled = m_rtShadowsEnabled && m_rtShadowPass && m_rtShadowPass->isValid();
+            record_or_build_shadow_as(cmdList);
+
+            // --- Record per-camera work into the same command list ---
+            for (auto idx : indices)
+                sync_and_record_view(cmdList, idx, idx == indices.front());
+
+            // --- Execute once ---
+            cmdList->close();
+            device->executeCommandList(cmdList);
+            device->waitForIdle();
+
+            // --- Readback all cameras ---
+            std::vector<std::vector<uint8_t>> outputs;
+            outputs.reserve(indices.size());
+            for (auto idx : indices)
+                outputs.push_back(readback_slot(m_views[idx]));
+
+            return outputs;
+        }
+
+        /// TODO(week2): Remove after v2 is validated.
+        std::vector<uint8_t> render_frame_for_index(uint32_t camera_index)
+        {
+            if (camera_index >= m_views.size())
+                throw std::out_of_range("Camera index out of range.");
+
+            if (camera_index != 0) {
+                auto& slot = m_views[camera_index];
+                m_width = slot.width; m_height = slot.height;
+                m_z_near = slot.z_near; m_z_far = slot.z_far;
+                m_framebuffer_factory = slot.framebufferFactory;
+                m_color_target = slot.colorTarget; m_depth_target = slot.depthTarget;
+                m_readback_target = slot.readbackTarget;
+                m_shadowTarget = slot.shadowTarget; m_shadowBlurTemp = slot.shadowBlurTemp;
+                m_compositeOutput = slot.compositeOutput; m_litColorSRV = slot.litColorSRV;
+                m_view = slot.view;
+                const auto pos = to_float3(slot.desc.position);
+                const auto tgt = to_float3(slot.desc.target);
+                const auto cam_up = normalize_or_throw(to_float3(slot.desc.up), "up");
+                m_camera.LookAt(pos, tgt, cam_up);
+            }
+            return render_frame();
+        }
+
+        /// Legacy batch (per-camera render_frame loop). Replace with v2 after validation.
+        std::vector<std::vector<uint8_t>> render_frame_batch_impl(const std::vector<uint32_t>& indices)
+        {
+            if (indices.empty())
+                return {};
+
+            for (auto idx : indices) {
+                if (idx >= m_views.size())
+                    throw std::out_of_range("Camera index out of range for batch.");
+            }
+
+            std::vector<std::vector<uint8_t>> outputs;
+            outputs.reserve(indices.size());
+            for (auto idx : indices) {
+                outputs.push_back(render_frame_for_index(idx));
+            }
+            return outputs;
+        }
+
     private:
         void ensure_default_light_attached()
         {
@@ -1226,9 +1702,9 @@ namespace rtxns::python
             }
         }
 
-        void resize_targets(uint32_t width, uint32_t height)
+        void resize_slot_targets(RenderViewSlot& slot, uint32_t width, uint32_t height)
         {
-            if (width == m_width && height == m_height && m_color_target && m_depth_target && m_readback_target)
+            if (width == slot.width && height == slot.height && slot.colorTarget && slot.depthTarget && slot.readbackTarget)
             {
                 return;
             }
@@ -1263,9 +1739,13 @@ namespace rtxns::python
             depth_desc.initialState = nvrhi::ResourceStates::DepthWrite;
             depth_desc.keepInitialState = true;
 
-            m_color_target = device->createTexture(color_desc);
-            m_depth_target = device->createTexture(depth_desc);
-            m_readback_target = device->createStagingTexture(output_desc, nvrhi::CpuAccessMode::Read);
+            slot.colorTarget = device->createTexture(color_desc);
+            slot.depthTarget = device->createTexture(depth_desc);
+            slot.readbackTarget = device->createStagingTexture(output_desc, nvrhi::CpuAccessMode::Read);
+
+            // Week 3: readback ring staging textures
+            for (auto& ring : slot.readbackRing)
+                ring.staging = device->createStagingTexture(output_desc, nvrhi::CpuAccessMode::Read);
 
             // Shadow target: R8_UNORM, UAV-compatible
             nvrhi::TextureDesc shadow_desc;
@@ -1277,12 +1757,12 @@ namespace rtxns::python
             shadow_desc.isUAV = true;
             shadow_desc.initialState = nvrhi::ResourceStates::UnorderedAccess;
             shadow_desc.keepInitialState = true;
-            m_shadowTarget = device->createTexture(shadow_desc);
+            slot.shadowTarget = device->createTexture(shadow_desc);
 
             // Temp texture for shadow blur ping-pong
             nvrhi::TextureDesc blur_desc = shadow_desc;
             blur_desc.debugName = "DonutRenderPy/ShadowBlurTemp";
-            m_shadowBlurTemp = device->createTexture(blur_desc);
+            slot.shadowBlurTemp = device->createTexture(blur_desc);
 
             // SRV-compatible copy of the color target (RenderTarget-only textures can't be SRV)
             nvrhi::TextureDesc lit_srv_desc;
@@ -1293,7 +1773,7 @@ namespace rtxns::python
             lit_srv_desc.format = nvrhi::Format::RGBA16_FLOAT;
             lit_srv_desc.initialState = nvrhi::ResourceStates::ShaderResource;
             lit_srv_desc.keepInitialState = true;
-            m_litColorSRV = device->createTexture(lit_srv_desc);
+            slot.litColorSRV = device->createTexture(lit_srv_desc);
 
             // Composite output: tonemapped RGBA8_UNORM, UAV-compatible for compute write.
             nvrhi::TextureDesc composite_desc;
@@ -1305,13 +1785,14 @@ namespace rtxns::python
             composite_desc.isUAV = true;
             composite_desc.initialState = nvrhi::ResourceStates::UnorderedAccess;
             composite_desc.keepInitialState = true;
-            m_compositeOutput = device->createTexture(composite_desc);
+            slot.compositeOutput = device->createTexture(composite_desc);
 
-            m_framebuffer_factory = std::make_shared<FramebufferFactory>(device);
-            m_framebuffer_factory->RenderTargets = {m_color_target};
-            m_framebuffer_factory->DepthTarget = m_depth_target;
+            slot.framebufferFactory = std::make_shared<FramebufferFactory>(device);
+            slot.framebufferFactory->RenderTargets = {slot.colorTarget};
+            slot.framebufferFactory->DepthTarget = slot.depthTarget;
         }
 
+        // --- Legacy single-camera members (bridged to m_views[0], remove after Patch D) ---
         std::shared_ptr<RendererContext> m_context;
         std::shared_ptr<NativeFileSystem> m_native_fs;
         std::shared_ptr<TextureCache> m_texture_cache;
@@ -1353,6 +1834,8 @@ namespace rtxns::python
         std::vector<CachedOmmBake> m_ommBakeCache;  // loaded from disk
         bool m_ommCacheLoaded = false;
 
+    private:
+        // --- Legacy lighting members ---
         dm::float3 m_ambient_top = dm::float3(0.03f, 0.04f, 0.06f);
         dm::float3 m_ambient_bottom = dm::float3(0.01f, 0.01f, 0.01f);
 
@@ -1368,6 +1851,18 @@ namespace rtxns::python
         uint32_t m_frame_index = 0;
 
         HeadlessPbrScene::FrameStats m_lastStats{};
+
+        // --- Multi-camera slots (Week 1) ---
+        std::vector<RenderViewSlot> m_views;
+
+        // --- Async batch tracking (Week 3) ---
+        struct PendingBatch {
+            uint64_t token = 0;
+            std::vector<uint32_t> cameraIndices;
+            std::vector<uint32_t> ringIndices;  // per-camera ring slot at submit time
+            nvrhi::EventQueryHandle query;
+        };
+        std::vector<PendingBatch> m_pendingBatches;
     };
 
     namespace
@@ -1387,6 +1882,87 @@ namespace rtxns::python
     {
         m_impl->load_scene(scene_path);
     }
+
+    // --- New multi-camera API ---
+
+    uint32_t HeadlessPbrScene::add_camera(
+        const std::array<float, 3>& position,
+        const std::array<float, 3>& target,
+        const std::array<float, 3>& up,
+        float fov_degrees,
+        uint32_t width,
+        uint32_t height,
+        float z_near,
+        float z_far)
+    {
+        CameraDesc desc;
+        desc.position = position;
+        desc.target = target;
+        desc.up = up;
+        desc.fov_degrees = fov_degrees;
+        desc.width = width;
+        desc.height = height;
+        desc.z_near = z_near;
+        desc.z_far = z_far;
+        return m_impl->add_camera_slot(desc);
+    }
+
+    void HeadlessPbrScene::set_camera_at(
+        uint32_t index,
+        const std::array<float, 3>& position,
+        const std::array<float, 3>& target,
+        const std::array<float, 3>& up,
+        float fov_degrees,
+        uint32_t width,
+        uint32_t height,
+        float z_near,
+        float z_far)
+    {
+        CameraDesc desc;
+        desc.position = position;
+        desc.target = target;
+        desc.up = up;
+        desc.fov_degrees = fov_degrees;
+        desc.width = width;
+        desc.height = height;
+        desc.z_near = z_near;
+        desc.z_far = z_far;
+        m_impl->set_camera_desc(index, desc);
+    }
+
+    uint32_t HeadlessPbrScene::camera_count() const noexcept
+    {
+        return m_impl->camera_count_impl();
+    }
+
+    std::vector<uint8_t> HeadlessPbrScene::render_frame(uint32_t camera_index)
+    {
+        return m_impl->render_frame_for_index(camera_index);
+    }
+
+    std::vector<std::vector<uint8_t>> HeadlessPbrScene::render_frame_batch(const std::vector<uint32_t>& camera_indices)
+    {
+        // Week 3: sync convenience = submit + wait + read
+        uint64_t token = m_impl->submit_frame_batch_impl(camera_indices);
+        return m_impl->read_frame_batch_impl(token);
+    }
+
+    uint64_t HeadlessPbrScene::submit_frame_batch(const std::vector<uint32_t>& camera_indices)
+    {
+        return m_impl->submit_frame_batch_impl(camera_indices);
+    }
+
+    bool HeadlessPbrScene::is_batch_ready(uint64_t token) const
+    {
+        return m_impl->is_batch_ready_impl(token);
+    }
+
+    std::vector<std::vector<uint8_t>> HeadlessPbrScene::read_frame_batch(uint64_t token)
+    {
+        return m_impl->read_frame_batch_impl(token);
+    }
+
+    // --- Existing API ---
 
     void HeadlessPbrScene::set_camera(
         const std::array<float, 3>& position,

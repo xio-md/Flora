@@ -76,19 +76,82 @@ inline void bind_rtxns_headless_pbr_module(py::module_ &m)
                 return self.save_omm_cache(path);
             },
             py::arg("path"))
+        .def("add_camera",
+            &rtxns::python::HeadlessPbrScene::add_camera,
+            py::arg("position"),
+            py::arg("target"),
+            py::arg("up"),
+            py::arg("fov_degrees"),
+            py::arg("width"),
+            py::arg("height"),
+            py::arg("z_near") = 0.1f,
+            py::arg("z_far") = 1000.0f)
+        .def("set_camera_at",
+            &rtxns::python::HeadlessPbrScene::set_camera_at,
+            py::arg("index"),
+            py::arg("position"),
+            py::arg("target"),
+            py::arg("up"),
+            py::arg("fov_degrees"),
+            py::arg("width"),
+            py::arg("height"),
+            py::arg("z_near") = 0.1f,
+            py::arg("z_far") = 1000.0f)
+        .def_property_readonly("camera_count", &rtxns::python::HeadlessPbrScene::camera_count)
         .def("render_frame",
-            [](rtxns::python::HeadlessPbrScene &self)
+            [](rtxns::python::HeadlessPbrScene &self, int camera_index)
             {
-                auto pixels = [&self]()
+                auto pixels = [&]()
                 {
                     py::gil_scoped_release release;
-                    return self.render_frame();
+                    return self.render_frame(static_cast<uint32_t>(camera_index));
                 }();
 
                 return py::bytes(
                     reinterpret_cast<const char *>(pixels.data()),
                     static_cast<py::ssize_t>(pixels.size()));
-            })
+            },
+            py::arg("camera_index") = 0)
+        .def("render_frame_batch",
+            [](rtxns::python::HeadlessPbrScene &self, const std::vector<uint32_t>& indices)
+            {
+                auto frames = [&]()
+                {
+                    py::gil_scoped_release release;
+                    return self.render_frame_batch(indices);
+                }();
+
+                py::list out;
+                for (const auto& pixels : frames)
+                    out.append(py::bytes(
+                        reinterpret_cast<const char*>(pixels.data()),
+                        static_cast<py::ssize_t>(pixels.size())));
+                return out;
+            },
+            py::arg("camera_indices"))
+        .def("submit_frame_batch",
+            &rtxns::python::HeadlessPbrScene::submit_frame_batch,
+            py::arg("camera_indices"))
+        .def("is_batch_ready",
+            &rtxns::python::HeadlessPbrScene::is_batch_ready,
+            py::arg("token"))
+        .def("read_frame_batch",
+            [](rtxns::python::HeadlessPbrScene &self, uint64_t token)
+            {
+                auto frames = [&]()
+                {
+                    py::gil_scoped_release release;
+                    return self.read_frame_batch(token);
+                }();
+
+                py::list out;
+                for (const auto& pixels : frames)
+                    out.append(py::bytes(
+                        reinterpret_cast<const char*>(pixels.data()),
+                        static_cast<py::ssize_t>(pixels.size())));
+                return out;
+            },
+            py::arg("token"))
         .def("get_last_frame_stats",
             [](const rtxns::python::HeadlessPbrScene &self)
             {
