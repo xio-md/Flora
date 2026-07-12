@@ -132,6 +132,10 @@ inline void bind_rtxns_headless_pbr_module(py::module_ &m)
         .def("submit_frame_batch",
             &rtxns::python::HeadlessPbrScene::submit_frame_batch,
             py::arg("camera_indices"))
+        .def("submit_frame_batch_ex",
+            &rtxns::python::HeadlessPbrScene::submit_frame_batch_ex,
+            py::arg("camera_indices"),
+            py::arg("micro_batch_size"))
         .def("is_batch_ready",
             &rtxns::python::HeadlessPbrScene::is_batch_ready,
             py::arg("token"))
@@ -152,6 +156,11 @@ inline void bind_rtxns_headless_pbr_module(py::module_ &m)
                 return out;
             },
             py::arg("token"))
+        .def("set_readback_ring_depth",
+            &rtxns::python::HeadlessPbrScene::set_readback_ring_depth,
+            py::arg("depth"))
+        .def_property_readonly("readback_ring_depth",
+            &rtxns::python::HeadlessPbrScene::get_readback_ring_depth)
         .def("get_last_frame_stats",
             [](const rtxns::python::HeadlessPbrScene &self)
             {

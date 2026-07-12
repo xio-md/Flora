@@ -225,10 +225,17 @@ namespace rtxns::python
         // Week 2: keep per-dispatch binding sets alive until command list finishes.
         std::vector<nvrhi::BindingSetHandle> frameBindingScratch;
 
-        // Week 3: readback ring for async pipeline.
-        struct ReadbackRingSlot { nvrhi::StagingTextureHandle staging; };
-        std::array<ReadbackRingSlot, 2> readbackRing;
-        uint32_t ringWriteIdx = 0;  // which ring slot to write to next
+        // Week 3+: readback ring with occupancy tracking.
+        struct ReadbackRingSlot {
+            nvrhi::StagingTextureHandle staging;
+            uint64_t occupancyToken = 0;  // 0 = free; non-zero = batch token currently writing to this slot
+        };
+        // P0 fix: configurable ring depth with occupancy protection.
+        // Default to 4; depth may change only when no batch is pending.
+        static constexpr uint32_t kDefaultRingDepth = 4;
+        std::vector<ReadbackRingSlot> readbackRing;
+        uint32_t ringWriteIdx = 0;
+        uint32_t ringDepth = kDefaultRingDepth;
 
         HeadlessPbrScene::FrameStats lastStats{};
     };
@@ -537,6 +544,41 @@ namespace rtxns::python
             auto affine = dm::homogeneousToAffine(donut_matrix);
             dm::decomposeAffine(dm::daffine3(affine), &translation, &rotation, &scaling);
             node->SetTransform(&translation, &rotation, &scaling);
+        }
+
+        // --- Ring depth configuration (P0) ---
+        void set_ring_depth(uint32_t depth)
+        {
+            if (depth < 2) depth = 2;
+            if (depth > 16) depth = 16;
+
+            if (!m_pendingBatches.empty())
+            {
+                throw std::runtime_error(
+                    "Cannot change the readback ring depth while batches are pending. "
+                    "Read all submitted tokens first.");
+            }
+
+            m_defaultRingDepth = depth;
+            if (m_views.empty())
+                return;
+
+            auto* device = m_context->device();
+            device->waitForIdle();
+            for (auto& view : m_views)
+            {
+                if (view.ringDepth == depth)
+                    continue;
+
+                view.ringDepth = depth;
+                view.ringWriteIdx = 0;
+                recreate_readback_ring(view, view.readbackTarget->getDesc());
+            }
+        }
+
+        [[nodiscard]] uint32_t get_ring_depth() const noexcept
+        {
+            return m_views.empty() ? m_defaultRingDepth : m_views[0].ringDepth;
         }
 
         void enable_rt_shadows(bool enable)
@@ -1267,6 +1309,7 @@ namespace rtxns::python
         {
             uint32_t index = static_cast<uint32_t>(m_views.size());
             m_views.emplace_back();
+            m_views.back().ringDepth = m_defaultRingDepth;
             set_camera_desc(index, desc);
             return index;
         }
@@ -1291,7 +1334,7 @@ namespace rtxns::python
                 m_framebuffer_factory = slot.framebufferFactory;
                 m_color_target = slot.colorTarget; m_depth_target = slot.depthTarget;
                 m_readback_target = use_ring
-                    ? slot.readbackRing[slot.ringWriteIdx].staging
+                    ? slot.readbackRing[slot.ringWriteIdx % slot.ringDepth].staging
                     : slot.readbackTarget;
                 m_shadowTarget = slot.shadowTarget; m_shadowBlurTemp = slot.shadowBlurTemp;
                 m_compositeOutput = slot.compositeOutput; m_litColorSRV = slot.litColorSRV;
@@ -1447,61 +1490,95 @@ namespace rtxns::python
             }
         }
 
-        // --- Async batch API (Week 3) ---
+        // --- Async batch API (Week 3 + P2 micro-batch experimental) ---
 
-        uint64_t submit_frame_batch_impl(const std::vector<uint32_t>& indices)
+        uint64_t submit_frame_batch_impl(const std::vector<uint32_t>& indices, uint32_t micro_batch_size = 0)
         {
             if (indices.empty()) return 0;
+
+            // Use micro_batch_size=0 as "all in one cmdList" (default).
+            // When micro_batch_size > 0, cameras are split into groups of that size,
+            // each recorded into its own command list.  All cmdLists are executed on
+            // the same Graphics queue so the GPU still serialises camera raster work;
+            // this experiment measures whether smaller cmdLists reduce driver overhead.
+
+            uint32_t mb = (micro_batch_size == 0)
+                ? static_cast<uint32_t>(indices.size())
+                : micro_batch_size;
+            uint32_t num_groups = (static_cast<uint32_t>(indices.size()) + mb - 1) / mb;
+
             for (auto idx : indices)
                 if (idx >= m_views.size()) throw std::out_of_range("Camera index out of range.");
             if (!m_scene) throw std::runtime_error("No scene loaded.");
             auto* device = m_context->device();
 
-            // Lazily init shadow pass
+            // Check ring occupancy
+            for (auto idx : indices) {
+                auto& slot = m_views[idx];
+                if (slot.readbackRing[slot.ringWriteIdx % slot.ringDepth].occupancyToken != 0)
+                    return 0;
+            }
+
             if (!m_rtShadowPass && m_context) {
                 m_rtShadowPass = std::make_unique<rtxns::shadow::RayTracedShadowPass>();
                 m_rtShadowPass->initialize(device, m_context->shader_factory().get(), 0, 0);
             }
 
-            // Create command list + record batch
-            auto cmdList = device->createCommandList();
-            cmdList->open();
-            m_scene->Refresh(cmdList, m_frame_index++);
+            // Record one cmdList per group, then submit the whole ordered sequence
+            // in one queue submission. This isolates command-list granularity from
+            // repeated submit/query overhead.
+            std::vector<nvrhi::CommandListHandle> commandLists;
+            commandLists.reserve(num_groups);
 
-            if (m_scene->GetSceneGraph()->GetLights().empty())
-                ensure_default_light_attached();
+            for (uint32_t g = 0; g < num_groups; ++g) {
+                uint32_t start = g * mb;
+                uint32_t end = std::min(start + mb, static_cast<uint32_t>(indices.size()));
 
-            // Shadow AS build/update (shared, handles first-frame BLAS + TLAS)
-            record_or_build_shadow_as(cmdList);
+                auto cmdList = device->createCommandList();
+                cmdList->open();
 
-            // Per-camera recording (writes to ring slot)
-            for (auto idx : indices)
-                sync_and_record_view(cmdList, idx, idx == indices.front(), true /*use_ring*/);
+                if (g == 0) {
+                    m_scene->Refresh(cmdList, m_frame_index++);
+                    if (m_scene->GetSceneGraph()->GetLights().empty())
+                        ensure_default_light_attached();
+                    record_or_build_shadow_as(cmdList);
+                }
 
-            cmdList->close();
+                for (uint32_t i = start; i < end; ++i)
+                    sync_and_record_view(cmdList, indices[i],
+                        (g == 0 && i == start), true /*use_ring*/);
 
-            uint64_t instance = device->executeCommandList(cmdList);
+                cmdList->close();
+                commandLists.push_back(cmdList);
+            }
 
-            // Set event query AFTER execute to mark this batch's submission point
+            std::vector<nvrhi::ICommandList*> commandListPointers;
+            commandListPointers.reserve(commandLists.size());
+            for (const auto& commandList : commandLists)
+                commandListPointers.push_back(commandList.Get());
+
+            uint64_t composite_token = device->executeCommandLists(
+                commandListPointers.data(), commandListPointers.size());
             auto query = device->createEventQuery();
             device->setEventQuery(query, nvrhi::CommandQueue::Graphics);
 
-            // Store pending batch
             PendingBatch pending;
-            pending.token = instance;
+            pending.token = composite_token;
             pending.cameraIndices = indices;
             pending.query = query;
-            // Record ring indices for each camera at submission time
-            for (auto idx : indices)
-                pending.ringIndices.push_back(m_views[idx].ringWriteIdx);
+
+            for (auto idx : indices) {
+                uint32_t rs = m_views[idx].ringWriteIdx % m_views[idx].ringDepth;
+                pending.ringIndices.push_back(rs);
+                m_views[idx].readbackRing[rs].occupancyToken = composite_token;
+            }
 
             m_pendingBatches.push_back(pending);
 
-            // Advance ring write index for each camera
             for (auto idx : indices)
-                m_views[idx].ringWriteIdx = (m_views[idx].ringWriteIdx + 1) % 2;
+                m_views[idx].ringWriteIdx = (m_views[idx].ringWriteIdx + 1) % m_views[idx].ringDepth;
 
-            return instance;
+            return composite_token;
         }
 
         bool is_batch_ready_impl(uint64_t token) const
@@ -1510,9 +1587,9 @@ namespace rtxns::python
             auto* device = m_context->device();
             for (const auto& pb : m_pendingBatches) {
                 if (pb.token == token)
-                    return device->pollEventQuery(pb.query);
+                    return pb.query ? device->pollEventQuery(pb.query) : true;
             }
-            return true; // unknown token: assume ready
+            return true;
         }
 
         std::vector<std::vector<uint8_t>> read_frame_batch_impl(uint64_t token)
@@ -1529,9 +1606,10 @@ namespace rtxns::python
             if (!matched)
                 throw std::runtime_error("Unknown batch token.");
 
-            // Wait for GPU to finish this submission
-            device->waitEventQuery(found.query);
-            device->resetEventQuery(found.query);
+            if (found.query) {
+                device->waitEventQuery(found.query);
+                device->resetEventQuery(found.query);
+            }
             m_pendingBatches.erase(it);
 
             // Readback using per-camera ring indices saved at submit time
@@ -1556,6 +1634,10 @@ namespace rtxns::python
                 for (uint32_t row = 0; row < slot.height; ++row)
                     std::copy_n(mapped + row_pitch * row, row_bytes, pixels.data() + row_bytes * row);
                 device->unmapStagingTexture(ringSlot);
+
+                // P0: Release ring slot occupancy — now safe for next submit.
+                slot.readbackRing[ringIdx].occupancyToken = 0;
+
                 outputs.push_back(std::move(pixels));
             }
             return outputs;
@@ -1702,6 +1784,18 @@ namespace rtxns::python
             }
         }
 
+        void recreate_readback_ring(RenderViewSlot& slot, const nvrhi::TextureDesc& outputDesc)
+        {
+            auto* device = m_context->device();
+            slot.readbackRing.clear();
+            slot.readbackRing.resize(slot.ringDepth);
+            for (auto& ring : slot.readbackRing)
+            {
+                ring.staging = device->createStagingTexture(outputDesc, nvrhi::CpuAccessMode::Read);
+                ring.occupancyToken = 0;
+            }
+        }
+
         void resize_slot_targets(RenderViewSlot& slot, uint32_t width, uint32_t height)
         {
             if (width == slot.width && height == slot.height && slot.colorTarget && slot.depthTarget && slot.readbackTarget)
@@ -1743,9 +1837,7 @@ namespace rtxns::python
             slot.depthTarget = device->createTexture(depth_desc);
             slot.readbackTarget = device->createStagingTexture(output_desc, nvrhi::CpuAccessMode::Read);
 
-            // Week 3: readback ring staging textures
-            for (auto& ring : slot.readbackRing)
-                ring.staging = device->createStagingTexture(output_desc, nvrhi::CpuAccessMode::Read);
+            recreate_readback_ring(slot, output_desc);
 
             // Shadow target: R8_UNORM, UAV-compatible
             nvrhi::TextureDesc shadow_desc;
@@ -1849,17 +1941,18 @@ namespace rtxns::python
         float m_z_near = 0.1f;
         float m_z_far = 1000.0f;
         uint32_t m_frame_index = 0;
+        uint32_t m_defaultRingDepth = RenderViewSlot::kDefaultRingDepth;
 
         HeadlessPbrScene::FrameStats m_lastStats{};
 
         // --- Multi-camera slots (Week 1) ---
         std::vector<RenderViewSlot> m_views;
 
-        // --- Async batch tracking (Week 3) ---
+        // --- Async batch tracking ---
         struct PendingBatch {
             uint64_t token = 0;
             std::vector<uint32_t> cameraIndices;
-            std::vector<uint32_t> ringIndices;  // per-camera ring slot at submit time
+            std::vector<uint32_t> ringIndices;
             nvrhi::EventQueryHandle query;
         };
         std::vector<PendingBatch> m_pendingBatches;
@@ -1952,6 +2045,11 @@ namespace rtxns::python
         return m_impl->submit_frame_batch_impl(camera_indices);
     }
 
+    uint64_t HeadlessPbrScene::submit_frame_batch_ex(const std::vector<uint32_t>& camera_indices, uint32_t micro_batch_size)
+    {
+        return m_impl->submit_frame_batch_impl(camera_indices, micro_batch_size);
+    }
+
     bool HeadlessPbrScene::is_batch_ready(uint64_t token) const
     {
         return m_impl->is_batch_ready_impl(token);
@@ -1997,6 +2095,16 @@ namespace rtxns::python
         const std::vector<float>& matrix_values)
     {
         m_impl->update_node_transform(name, matrix_values);
+    }
+
+    void HeadlessPbrScene::set_readback_ring_depth(uint32_t depth)
+    {
+        m_impl->set_ring_depth(depth);
+    }
+
+    uint32_t HeadlessPbrScene::get_readback_ring_depth() const noexcept
+    {
+        return m_impl->get_ring_depth();
     }
 
     void HeadlessPbrScene::enable_rt_shadows(bool enable)
