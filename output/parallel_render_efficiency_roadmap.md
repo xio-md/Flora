@@ -1,7 +1,73 @@
 # RTXNS 并行渲染效率推进文档
 
-> 日期: 2026-07-11  
+> 日期: 2026-07-11，更新: 2026-07-12（附实测伸缩数据）
 > 目标: 只关注并行渲染吞吐、GPU 利用率、显存效率和调度开销。不讨论渲染质量、材质/光照效果提升。
+
+## 0. Week 1-3 完成状态与 ReplicaCAD 实测伸缩曲线
+
+### 0.1 已完成
+
+| Week | 内容 | 状态 |
+|------|------|------|
+| Week 1 | CameraDesc + RenderViewSlot + 多相机 API | ✅ |
+| Week 2 | `render_frame_batch_v2()` 单 cmdList 批量 + 共享 BLAS/TLAS | ✅ |
+| Week 3 | `submit_frame_batch()` / `read_frame_batch()` 异步 + EventQuery | ✅ |
+| — | P0 Ring 占用保护 + 可配置 depth (K=4) + hash 校验 | ✅ |
+
+### 0.2 ReplicaCAD 实际伸缩数据
+
+测试场景: `Stage_v3_sc0_staging.glb`，RT 阴影 OFF，GPU: 单卡 Vulkan。**统一使用 async 端到端吞吐（submit+wait+read）**，submit-only 不反映观测生成速度。
+
+**256×192:**
+
+| N | sync cam-FPS | async cam-FPS | batch ms | per-cam FPS | async/sync |
+|---|-------------|---------------|----------|-------------|------------|
+| 1 | 3,410 | **5,924** | 0.17 | 5,924 | 1.74× |
+| 2 | 5,294 | **6,326** | 0.32 | 3,163 | 1.20× |
+| 4 | 6,228 | **8,767** | 0.46 | 2,192 | 1.41× |
+| 8 | 5,295 | **7,885** | 1.01 | 986 | 1.49× |
+| 12 | 6,666 | **9,635** | 1.25 | 803 | 1.45× |
+
+**512×384（K=8 伸缩扫描）:**
+
+| N | async cam-FPS | batch ms |
+|---|---------------|----------|
+| 4 | 1286 | 3.11 |
+| async e2e N=4 vs sync batch N=4 加速: 1.26× |
+
+**Ring 深度伸缩 (512×384, N=4 async e2e):**
+
+| K | cam-FPS |
+|---|---------|
+| 2 | 1,333 |
+| 4 | **1,557** |
+| 8 | 1,481 |
+
+### 0.3 关键发现（修订）
+
+1. **N≥8 的 per-cam FPS 下降是 GPU 工作量随相机数线性增长的正常现象**，不是"单 cmdList 没拆开"造成的。同一 Graphics queue 上拆成多个 cmdList 不会让不同相机的 raster 真正并行——仍是顺序执行。
+2. **P2（同 queue 多 cmdList）已否决**。NVRHI 确实支持 `executeCommandLists()` 批量提交，但同一 queue 的 cmdList 按提交顺序执行，不产生 GPU 并行。
+3. **K=4 是 ring depth 最优值**，在此吞吐最高（1,557 cam-FPS @ 512×384）。K=2 限制流水深度，K=8 无额外收益。
+4. **async/sync 比值**：N=1 时 1.96×（CPU 不等待 GPU），N 增大后逐渐降至 1.33×（readback 时间占比上升）。统一用端到端吞吐报告。
+5. **`set_readback_ring_depth()` 切换深度时的 bug**：原先只改 `ringDepth` 字段，不重建已有相机的 `readbackRing` vector。切换 K=4→K=8 后访问越界 staging slot 导致 GPU 卡死。已修复：存在 pending token 时拒绝切换 + `waitForIdle()` 后批量重建所有 ring slot。
+
+### 0.3.1 P2 受控否定实验
+
+为区分“多 cmdList”与“多次 submit/query”两类开销，P2 实验将多个 micro-batch 录制成多个 cmdList，再用一次 `executeCommandLists(...)` 提交整个有序序列，仅设置一个 EventQuery。测试条件为 ReplicaCAD、256×192、RT shadow OFF、K=8、5 次交错 trial、每 trial 120 batch；multi-cmdList 与 single-cmdList 输出 hash 一致。
+
+| 条件 | N=12 mb=4 | N=12 mb=2 | N=8 mb=4 | N=8 mb=2 |
+|------|-----------|-----------|----------|----------|
+| 两次独立受控套件的相对区间 | -1.1% ~ -11.9% | -13.7% ~ -15.7% | -1.6% ~ -13.2% | -16.9% ~ -22.6% |
+
+去除重复 submit/query 后，`mb=4` 的损失有所缩小但没有稳定转正，`mb=2` 持续退化。因此负收益方向是真实的；旧实现只是放大了其幅度。正式路径保持单 cmdList，P2 接口仅用于实验或在提交前移除。
+
+### 0.4 对后续规划的启示（修订）
+
+- **不再追求多 cmdList 并行**。N≥8 吞吐退化的正确解法是降低每相机成本：readback 合批、binding/constant-buffer 复用、减少每相机 barrier。
+- Week 4（资源池 + scheduler）能解决 VRAM 稳定性，配合 per-camera 成本优化可进一步提升 N=8/12 吞吐。
+- 动态仿真阶段新增 transform/TLAS dirty 更新管线后，用"动态物体数 × 相机数"基准验证，不继续追逐 cmdList 方案。
+
+---
 
 ## 1. 结论先行
 
@@ -34,7 +100,7 @@
 
 - P0 阶段可以保留最终同步读回，但要把 N 个 camera 的工作合入一个 command list，降低 `waitForIdle()` 次数。
 - P1 阶段把 readback 改成 ring-buffer staging，返回上一帧或前 K 帧结果，让 render submit 和 CPU copy 解耦。
-- P2 阶段再引入 timeline semaphore/fence，彻底替换 per-frame `waitForIdle()`。
+- EventQuery 已完成稳态 `waitForIdle()` 的替代；同 queue 的 micro-cmdList 已通过 P2 实验否决，不再规划 timeline semaphore 作为该问题的解法。
 
 ### 2.2 单相机资源模型
 
@@ -223,15 +289,16 @@ Frame k-1:
 - GPU 可连续吃 batch work，CPU 同时处理上一批图片。
 - 对 RL/vectorized env 更友好，可以选择延迟一帧拿图。
 
-### 4.3 P2 目标: 多队列和 timeline semaphore
+### 4.3 P2 目标: ~~同一 Graphics queue 的多 cmdList~~ → 已否决，改为 per-camera 成本优化
 
-把 frame 拆成:
+**原实验假设**: 将相机拆为多个 cmdList 后，可在同一 Graphics queue 上提高吞吐。
 
-1. Upload/AS update
-2. Raster + RT shadow + composite
-3. Copy/readback
+**实测结论（2026-07-12）**: 同一 Graphics queue 上拆多个 cmdList 不会让不同相机的 raster 真正并行——Vulkan 按提交顺序执行同一 queue 的 cmd buffer。NVRHI 的 `executeCommandLists()` 已支持批量提交，但相机间仍是顺序渲染。真正的并行需要多个 VkQueue（如 graphics + compute + transfer）或 GPU-side multi-draw 合并，不属于当前阶段。
 
-如果 NVRHI/Vulkan backend 暴露足够队列能力，则用 timeline semaphore 建依赖。不建议在 P0 就做，因为当前最大的结构性问题是没有 batch object。
+**修正方向**:
+1. 降低每相机成本：readback 合批为一次 `mapStagingTexture`、binding set/constant-buffer 跨相机复用、减少 per-camera pipeline barrier。
+2. 动态仿真阶段：仅在物体变换或场景结构变化时更新 TLAS（用 Donut 的 `HasPendingTransformChanges()` / `HasPendingStructureChanges()` 脏标记）。
+3. 用"动态物体数 × 相机数"基准验证优化效果，不继续追逐 cmdList 拆分。
 
 ### 4.4 P3 目标: 多 scene / 多 GPU
 
@@ -772,9 +839,9 @@ std::vector<std::vector<uint8_t>> render_frame_batch(const std::vector<uint32_t>
 - N=8 camera 不出现显存尖峰。
 - 不同分辨率 camera 可以渲染，但会被拆成多个 micro-batch。
 
-### 5.13 工程细化 Phase 6: 多队列 timeline semaphore
+### 5.13 远期探索: 多队列 timeline semaphore（非 P2 延续）
 
-目标: 只在 Phase 1-5 稳定后推进。
+目标: 仅在存在明确的跨 queue 依赖（如 upload/copy 或 CUDA interop）并完成 per-camera 成本优化后评估；不用于重新尝试同 queue micro-cmdList。
 
 参考:
 
