@@ -15,16 +15,18 @@ void main(uint3 pos : SV_DispatchThreadID)
     float4 color = t_litColor[pos.xy];
     float shadow = t_shadow[pos.xy];
 
-    // Shadow ambient floor: lets ~5% sky/ambient through shadow regions
-    // so that surface texture (cobblestone, etc.) remains visible.
-    // GT shows ~40-50% brightness reduction, not total blackout.
-    float shadowAmbient = 0.05f;
+    // The forward pass already contains Flora's ambient approximation.  Until
+    // direct and ambient terms are split into separate buffers, retain a
+    // meaningful floor here so RT visibility does not incorrectly black out
+    // that ambient contribution in fully shadowed regions.
+    float shadowAmbient = 0.25f;
     float s = min(shadow + shadowAmbient, 1.0f);
 
-    // Fixed exposure to bring HDR forward-pass output into tonemap range.
-    // The forward pass with irradiance=2.5 produces values up to ~5-10 in HDR;
-    // a fixed exposure of 0.03 maps this into the tonemap's useful range.
-    float exposure = 0.15f;
+    // Shared cross-renderer reference display transform.  The Flora no-RT
+    // control, Flora RT-shadow render, SAPIEN direct render and SAPIEN GI
+    // render all use the same 0.60 exposure and HBD curve for the ReplicaCAD
+    // four-way comparison.  This is presentation-only; lighting is unchanged.
+    float exposure = 0.60f;
 
     float3 shadowed = color.rgb * s * exposure;
     shadowed = Tonemap(shadowed);

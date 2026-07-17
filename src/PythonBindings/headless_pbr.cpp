@@ -1112,9 +1112,20 @@ namespace rtxns::python
 
                 if (m_shadowAS.tlas)
                 {
-                    // Get light direction from the first scene light
+                    // Use the explicit default light when one was requested.
+                    // Scene-authored lights are neutralized in that case, but
+                    // may still occupy index 0 in the graph; taking that
+                    // first light made RT shadows disagree with raster light.
                     dm::float3 sunDir = dm::normalize(dm::float3(1.0f, 1.0f, 0.5f));  // towards the light by default
-                    if (!m_scene->GetSceneGraph()->GetLights().empty())
+                    if (m_default_light_requested && m_default_light)
+                    {
+                        dm::float3 lightDir = dm::float3(
+                            float(m_default_light->GetDirection().x),
+                            float(m_default_light->GetDirection().y),
+                            float(m_default_light->GetDirection().z));
+                        sunDir = dm::normalize(-lightDir);
+                    }
+                    else if (!m_scene->GetSceneGraph()->GetLights().empty())
                     {
                         auto firstLight = m_scene->GetSceneGraph()->GetLights().front();
                         if (auto dirLight = std::dynamic_pointer_cast<DirectionalLight>(firstLight))
@@ -1370,7 +1381,10 @@ namespace rtxns::python
             if (useRTShadow && m_shadowAS.tlas)
             {
                 dm::float3 sunDir = dm::normalize(dm::float3(1.0f, 1.0f, 0.5f));
-                if (!m_scene->GetSceneGraph()->GetLights().empty()) {
+                if (m_default_light_requested && m_default_light) {
+                    dm::float3 ld(float(m_default_light->GetDirection().x), float(m_default_light->GetDirection().y), float(m_default_light->GetDirection().z));
+                    sunDir = dm::normalize(-ld);
+                } else if (!m_scene->GetSceneGraph()->GetLights().empty()) {
                     auto firstLight = m_scene->GetSceneGraph()->GetLights().front();
                     if (auto dirLight = std::dynamic_pointer_cast<DirectionalLight>(firstLight)) {
                         dm::float3 ld(float(dirLight->GetDirection().x), float(dirLight->GetDirection().y), float(dirLight->GetDirection().z));
