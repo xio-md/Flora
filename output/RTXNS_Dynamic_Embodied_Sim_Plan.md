@@ -351,8 +351,8 @@ Genesis 的 batch renderer 当前限定 Linux x86-64/CUDA，这也说明最终 G
 | `*.scene_instance.json` | 91 |
 | `*.object_config.json` | 92 |
 | 普通对象实例总数 | 2,293 |
-| articulated object 实例总数 | 541 |
-| 含 articulated object 的场景 | 91/91 |
+| articulated object 实例总数 | 540 |
+| 含 articulated object 的场景 | 90/91（`empty_stage` 除外） |
 | URDF | 12 |
 | `.ao_config.json` | 5 |
 
@@ -694,6 +694,8 @@ E:\python\python.exe tools\bench_replicacad_parallel.py --width 1280 --height 72
 
 ### Week A1：ReplicaCAD Manifest 与 SceneDesc
 
+> 完成状态（2026-07-18）：已完成。91/91 场景解析通过，2,293 个普通对象、540 个 articulated 实例、92 个 object config、5 个 stage config 和 12 个 URDF 均进入确定性 manifest；13 项单元测试及正式检查工具通过。
+
 #### A1.1 目标
 
 不急于渲染，先把 91 个场景全部解析成确定、可测试、与后端无关的 `SceneDesc`，解决路径、坐标、模板和缺失资源问题。
@@ -753,7 +755,7 @@ class SceneDesc:
 #### A1.5 验收标准
 
 - 91/91 scene instance 解析成功；dataset registry 中缺失的外部 Fetch 依赖作为结构化 warning 单独记录。
-- 普通对象实例统计为 2,293，articulated 实例统计为 541。
+- 普通对象实例统计为 2,293，articulated 实例统计为 540。原规划中的 541 为预估误差，当前数据集真实值为 540。
 - `apt_0` 统计为 113 个普通对象和 6 个 articulated object。
 - 所有本地 stage/object/URDF visual asset 均可解析到绝对路径。
 - 相同输入多次解析产生完全相同的 handle/instance ID 顺序。
@@ -765,8 +767,8 @@ class SceneDesc:
 |---|---:|---:|
 | 可解析完整场景 | 0 | 91 |
 | 支持对象模板 | 仅手写 stage 路径 | 92 个 object config |
-| articulated manifest | 0 | 541 个实例、12 个 URDF |
-| 资源缺失诊断 | 无 | 结构化 JSON 报告 |
+| articulated manifest | 0 | 540 个实例、12 个 URDF（已完成） |
+| 资源缺失诊断 | 无 | 结构化 JSON 报告（已完成） |
 
 本周汇报重点是“数据覆盖率从单 GLB 提升到完整 ReplicaCAD manifest”，不以 FPS 为主。
 
@@ -1218,8 +1220,8 @@ B=8, C=1, ColorRGBA8, 1280x720, tensor_ready = 742 cam-FPS
 
 1. Gate 0 已完成：single-cmdList 基线、测试元数据和无 RT/RT correctness 已冻结。
 2. 不再继续 micro-batch/multi-cmdList 优化。
-3. 下一项开发从 Week A1 的纯解析 `ReplicaCADManifest/SceneDesc` 开始。
-4. Week A1 先交付 91 场景覆盖率、路径解析和 transform tests，不直接把 JSON 解析混进 `headless_pbr.cpp`。
+3. Week A1 已完成：`ReplicaCADManifest/SceneDesc`、91 场景覆盖率、路径解析和 transform tests 已交付，未修改 `headless_pbr.cpp`。
+4. 下一项开发进入 Week A2：实现 `SceneDesc -> Donut SceneGraph` 和 `AssetCache`，先让完整 `apt_0` 的 113 个家具可见。
 
 ### Iteration A 完成定义
 
