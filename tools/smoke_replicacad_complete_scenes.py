@@ -1,4 +1,4 @@
-"""Compile, load and render every registered ReplicaCAD static scene."""
+"""Compile, load and render every complete ReplicaCAD scene, including URDF visuals."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATASET = REPO_ROOT / "ReplicaCAD"
-DEFAULT_OUTPUT = REPO_ROOT / "output" / "replicacad_complete" / "all_scene_smoke.json"
+DEFAULT_OUTPUT = REPO_ROOT / "output" / "replicacad_a3" / "all_scene_smoke.json"
 MODULE_DIR = REPO_ROOT / "bin" / "windows-x64"
 
 
@@ -68,8 +68,8 @@ def main() -> int:
             z_near=0.1,
             z_far=100.0,
         )
-        native_scene.set_ambient((0.30, 0.30, 0.30), (0.12, 0.12, 0.12))
-        native_scene.set_default_light((0.3, 0.8, -0.5), (1.0, 1.0, 1.0), 50.0)
+        native_scene.set_ambient((0.03, 0.04, 0.06), (0.01, 0.01, 0.01))
+        native_scene.set_default_light((-0.4, -1.0, -0.6), (1.0, 1.0, 1.0), 2.0)
         native_scene.enable_rt_shadows(False)
 
         with tempfile.TemporaryDirectory(dir=temporary_root) as directory:
@@ -83,6 +83,9 @@ def main() -> int:
                 native_scene.load_scene(str(artifact.scene_path))
                 load_ms = 1000.0 * (time.perf_counter() - load_start)
                 stats = native_scene.get_scene_stats()
+                control_handles = native_scene.get_node_handles(compiled.control_node_names)
+                if len(control_handles) != len(set(control_handles)):
+                    raise RuntimeError(f"Scene {handle} has duplicate native control handles.")
                 sample = compiled.instances[min(1, len(compiled.instances) - 1)]
                 native_matrix = native_scene.get_node_world_transform(sample.node_name)
                 transform_error = max(
@@ -110,9 +113,14 @@ def main() -> int:
                     {
                         "scene": handle,
                         "ordinary_objects": len(scene_desc.objects),
-                        "omitted_articulated_instances": len(scene_desc.articulated),
+                        "articulated_instances": compiled.articulated_instance_count,
+                        "articulated_links": compiled.articulated_link_count,
+                        "articulated_visuals": compiled.articulated_visual_count,
+                        "omitted_articulated_instances": compiled.omitted_articulated_instances,
                         "unique_models": compiled.model_count,
-                        "render_instances": compiled.instance_count,
+                        "render_instances": compiled.render_instance_count,
+                        "control_nodes": len(control_handles),
+                        "native_node_handles": native_scene.node_handle_count,
                         "native_mesh_instances": stats["mesh_instances"],
                         "load_ms": load_ms,
                         "render_ms": render_ms,
@@ -122,7 +130,8 @@ def main() -> int:
                 )
                 print(
                     f"[{index:02d}/{total:02d}] {handle}: "
-                    f"models={compiled.model_count}, instances={compiled.instance_count}, "
+                    f"models={compiled.model_count}, instances={compiled.render_instance_count}, "
+                    f"articulated={compiled.articulated_instance_count}, "
                     f"load={load_ms:.1f} ms, render={render_ms:.1f} ms",
                     flush=True,
                 )
@@ -132,12 +141,19 @@ def main() -> int:
 
     elapsed_ms = 1000.0 * (time.perf_counter() - started)
     report = {
-        "schema_version": 1,
+        "schema_version": 2,
         "resolution": [args.width, args.height],
         "summary": {
             "requested_scenes": total,
             "passed_scenes": len(results),
             "ordinary_objects": sum(item["ordinary_objects"] for item in results),
+            "articulated_instances": sum(
+                item["articulated_instances"] for item in results
+            ),
+            "articulated_links": sum(item["articulated_links"] for item in results),
+            "articulated_visuals": sum(
+                item["articulated_visuals"] for item in results
+            ),
             "omitted_articulated_instances": sum(
                 item["omitted_articulated_instances"] for item in results
             ),

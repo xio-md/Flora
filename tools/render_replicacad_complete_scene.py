@@ -1,4 +1,4 @@
-"""Compile and render one ReplicaCAD static scene through Donut's model instancing."""
+"""Compile and render a complete ReplicaCAD scene through Donut's SceneGraph."""
 
 from __future__ import annotations
 
@@ -72,7 +72,7 @@ def main() -> int:
     artifact = compiled.write(scene_path)
     compile_ms = 1000.0 * (time.perf_counter() - compile_start)
     print(
-        f"[2/5] Compiled {compiled.instance_count} render instances from "
+        f"[2/5] Compiled {compiled.render_instance_count} render instances from "
         f"{compiled.model_count} unique GLBs in {compile_ms:.2f} ms.",
         flush=True,
     )
@@ -182,8 +182,11 @@ def main() -> int:
             "mean_frame_ms": float(np.mean(frame_times)),
             "camera_fps": 1000.0 / float(np.mean(frame_times)),
             "unique_models": compiled.model_count,
-            "render_instances": compiled.instance_count,
+            "render_instances": compiled.render_instance_count,
             "ordinary_objects": len(scene_desc.objects),
+            "articulated_instances": compiled.articulated_instance_count,
+            "articulated_links": compiled.articulated_link_count,
+            "articulated_visuals": compiled.articulated_visual_count,
             "omitted_articulated_instances": compiled.omitted_articulated_instances,
             "native_scene_stats": scene_stats,
             "validated_transforms": len(transform_errors),

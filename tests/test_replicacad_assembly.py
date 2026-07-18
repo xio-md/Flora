@@ -35,20 +35,31 @@ class ReplicaCADAssemblyTests(unittest.TestCase):
         cls.apt_0 = next(scene for scene in cls.scenes if scene.name == "apt_0")
         cls.compiled = compile_donut_scene(cls.apt_0)
 
-    def test_apt_0_compiles_stage_and_ordinary_objects(self) -> None:
+    def test_apt_0_compiles_complete_static_visual_scene(self) -> None:
         self.assertEqual(self.compiled.instance_count, 114)
         self.assertEqual(self.compiled.instances[0].kind, "stage")
         self.assertEqual(
             sum(instance.kind == "object" for instance in self.compiled.instances),
             113,
         )
-        self.assertEqual(self.compiled.omitted_articulated_instances, 6)
+        self.assertEqual(self.compiled.articulated_instance_count, 6)
+        self.assertEqual(self.compiled.articulated_link_count, 37)
+        self.assertEqual(self.compiled.articulated_visual_count, 31)
+        self.assertEqual(self.compiled.render_instance_count, 145)
+        self.assertEqual(self.compiled.graph_node_count, 188)
+        self.assertEqual(len(self.compiled.control_node_names), 157)
+        self.assertEqual(self.compiled.omitted_articulated_instances, 0)
 
     def test_models_are_deduplicated_by_resolved_asset_path(self) -> None:
         expected = {
             instance.visual_asset.source_path.resolve()
             for instance in (self.apt_0.stage, *self.apt_0.objects)
         }
+        expected.update(
+            visual.mesh_path.resolve()
+            for articulation in self.apt_0.articulated
+            for visual in articulation.visuals
+        )
         self.assertEqual(set(self.compiled.models), expected)
         self.assertEqual(self.compiled.model_count, len(expected))
         self.assertLess(self.compiled.model_count, self.compiled.instance_count)
@@ -97,7 +108,8 @@ class ReplicaCADAssemblyTests(unittest.TestCase):
         for scene in self.scenes:
             compiled = compile_donut_scene(scene)
             self.assertEqual(compiled.instance_count, 1 + len(scene.objects))
-            self.assertEqual(compiled.omitted_articulated_instances, len(scene.articulated))
+            self.assertEqual(compiled.articulated_instance_count, len(scene.articulated))
+            self.assertEqual(compiled.omitted_articulated_instances, 0)
             self.assertEqual(len(compiled.models), len(set(compiled.models)))
             self.assertTrue(all(path.is_file() for path in compiled.models))
 

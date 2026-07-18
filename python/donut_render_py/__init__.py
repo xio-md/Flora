@@ -41,11 +41,15 @@ from .objects import (
 )
 from .runtime import Scene, create_scene, destroy, init
 from .donut_scene_compiler import (
+    CompiledArticulationDesc,
     CompiledDonutScene,
     CompiledInstanceDesc,
+    CompiledUrdfLinkDesc,
+    CompiledUrdfVisualDesc,
     DonutSceneArtifact,
     compile_donut_scene,
     compose_instance_asset_matrix,
+    compose_urdf_joint_matrix,
 )
 from .replicacad import (
     ReplicaCADManifest,
@@ -72,8 +76,11 @@ __all__ = [
     "ArticulationDesc",
     "ArticulationTemplateDesc",
     "ColorTexture",
+    "CompiledArticulationDesc",
     "CompiledDonutScene",
     "CompiledInstanceDesc",
+    "CompiledUrdfLinkDesc",
+    "CompiledUrdfVisualDesc",
     "DeformableShape",
     "DisneySurface",
     "DonutRenderError",
@@ -123,6 +130,7 @@ __all__ = [
     "compose_transform_matrix",
     "compile_donut_scene",
     "compose_instance_asset_matrix",
+    "compose_urdf_joint_matrix",
     "create_scene",
     "destroy",
     "init",

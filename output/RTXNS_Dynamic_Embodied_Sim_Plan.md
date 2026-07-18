@@ -854,6 +854,8 @@ output/replicacad_complete/
 
 ### Week A3：URDF 可视层级和动态位姿
 
+> 完成状态（2026-07-18）：A3 已完成。`apt_0` 的 6 个 articulated object 已编译为 37 个 link 和 31 个 visual，与 stage + 113 个普通对象共同形成 145 个 model-backed render instance；91/91 场景完成原生加载，覆盖 540 个 articulated instance、3,330 个 link 和 2,790 个 visual，遗漏为 0。新增 scene-load-time 连续 node handle 和原子批量矩阵 API，26 个可动关节每批写入约 `0.019-0.023 ms`。128x96、RT 8 samples 下动态 N=8 达到 4,699 cam-FPS，为静态吞吐的 86.1%。1000 帧动态 RT 压力测试通过：仅一次 `load_scene()`，热身后 BLAS rebuild 为 0，恢复姿态矩阵误差为 0，批量/逐节点帧哈希一致，RSS 仅增长 0.13 MiB。详细结果见 `docs/RTXNS_ReplicaCAD_Articulation_Week_A3_Report.md`。
+
 #### A3.1 目标
 
 支持 ReplicaCAD articulated object 的完整可视层级，在不接入物理引擎的情况下，由脚本或外部 link pose 驱动门、抽屉和冰箱等部件。
@@ -907,6 +909,34 @@ compiled.set_link_poses(link_poses_np)    # [1, N_link, 7]
 - 首次完成“外部状态驱动的动态 ReplicaCAD”。
 - 提供静态/运动前后截图或短序列。
 - 报告每帧动态对象数、link 数和位姿更新时间。
+
+#### A3.7 实际交付与结果（2026-07-18）
+
+| 指标 | A3 结果 |
+|---|---:|
+| `apt_0` articulated / link / visual | 6 / 37 / 31 |
+| `apt_0` model-backed render instance / unique model | 145 / 101 |
+| 91 场景 articulated 覆盖 | 540 / 540 |
+| 91 场景 link / visual / omitted | 3,330 / 2,790 / 0 |
+| 26 关节原生批量写入 | `0.019-0.023 ms/batch` |
+| 128x96 RT N=1/4/8 动态吞吐 | 1,045 / 3,402 / 4,699 cam-FPS |
+| N=1/4/8 动态/静态吞吐 | 66.9% / 82.8% / 86.1% |
+| 1000 帧恢复姿态误差 / BLAS rebuild | 0 / 0 |
+| 1000 帧 RSS 增长 | 0.13 MiB |
+
+A3 交付文件：
+
+```text
+python/donut_render_py/donut_scene_compiler.py
+src/PythonBindings/headless_pbr.h/.cpp
+python/rtxns_genesis_style/renderer.py
+tests/test_replicacad_articulation.py
+tools/render_replicacad_dynamic_scene.py
+tools/bench_replicacad_dynamic_parallel.py
+tools/stress_replicacad_dynamic_scene.py
+docs/RTXNS_ReplicaCAD_Articulation_Week_A3_Report.md
+output/replicacad_a3/
+```
 
 ### Week A4：多模态 Sensor 与 Genesis 风格接口
 
@@ -1256,7 +1286,8 @@ B=8, C=1, ColorRGBA8, 1280x720, tensor_ready = 742 cam-FPS
 2. 不再继续 micro-batch/multi-cmdList 优化。
 3. Week A1 已完成：`ReplicaCADManifest/SceneDesc`、91 场景覆盖率、路径解析和 transform tests 已交付。
 4. Week A2 已完成：`SceneDesc -> Donut SceneGraph`、场景内资产去重、91 场景原生 smoke 和完整场景并行基线已交付。
-5. 下一项开发进入 Week A3：实现 URDF link/visual 层级、稳定 link handle 和 CPU `PoseBatch` reference API，先让 `apt_0` 的 6 个 articulated object 可见并可由外部位姿驱动。
+5. Week A3 已完成：URDF link/visual 层级、稳定 node handle、CPU FK reference、批量动态位姿和 1000 帧长稳态已交付。
+6. 下一项开发进入 Week A4：实现 RGB/Depth/Instance/Semantic/Normal 对齐输出，并固化 Genesis 风格的动态 sensor API。
 
 ### Iteration A 完成定义
 

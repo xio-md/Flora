@@ -1,0 +1,3726 @@
+{
+  "models": [
+    "../../ReplicaCAD/stages/frl_apartment_stage.glb",
+    "../../ReplicaCAD/objects/frl_apartment_basket.glb",
+    "../../ReplicaCAD/objects/frl_apartment_bike_01.glb",
+    "../../ReplicaCAD/objects/frl_apartment_bin_01.glb",
+    "../../ReplicaCAD/objects/frl_apartment_bin_02.glb",
+    "../../ReplicaCAD/objects/frl_apartment_bin_03.glb",
+    "../../ReplicaCAD/objects/frl_apartment_wall_cabinet_01.glb",
+    "../../ReplicaCAD/objects/frl_apartment_clock.glb",
+    "../../ReplicaCAD/objects/frl_apartment_stool_02.glb",
+    "../../ReplicaCAD/objects/frl_apartment_chair_05.glb",
+    "../../ReplicaCAD/objects/frl_apartment_cushion_03.glb",
+    "../../ReplicaCAD/objects/frl_apartment_sofa.glb",
+    "../../ReplicaCAD/objects/frl_apartment_table_04.glb",
+    "../../ReplicaCAD/objects/frl_apartment_indoor_plant_02.glb",
+    "../../ReplicaCAD/objects/frl_apartment_rug_01.glb",
+    "../../ReplicaCAD/objects/frl_apartment_rug_02.glb",
+    "../../ReplicaCAD/objects/frl_apartment_table_03.glb",
+    "../../ReplicaCAD/objects/frl_apartment_cushion_01.glb",
+    "../../ReplicaCAD/objects/frl_apartment_chair_01.glb",
+    "../../ReplicaCAD/objects/frl_apartment_towel.glb",
+    "../../ReplicaCAD/objects/frl_apartment_lamp_01.glb",
+    "../../ReplicaCAD/objects/frl_apartment_remote-control_01.glb",
+    "../../ReplicaCAD/objects/frl_apartment_tv_object.glb",
+    "../../ReplicaCAD/objects/frl_apartment_tv_screen.glb",
+    "../../ReplicaCAD/objects/frl_apartment_wall_cabinet_02.glb",
+    "../../ReplicaCAD/objects/frl_apartment_picture_04.glb",
+    "../../ReplicaCAD/objects/frl_apartment_book_02.glb",
+    "../../ReplicaCAD/objects/frl_apartment_book_03.glb",
+    "../../ReplicaCAD/objects/frl_apartment_book_04.glb",
+    "../../ReplicaCAD/objects/frl_apartment_book_06.glb",
+    "../../ReplicaCAD/objects/frl_apartment_book_05.glb",
+    "../../ReplicaCAD/objects/frl_apartment_book_01.glb",
+    "../../ReplicaCAD/objects/frl_apartment_table_02.glb",
+    "../../ReplicaCAD/objects/frl_apartment_bowl_07.glb",
+    "../../ReplicaCAD/objects/frl_apartment_kitchen_utensil_05.glb",
+    "../../ReplicaCAD/objects/frl_apartment_pan_01.glb",
+    "../../ReplicaCAD/objects/frl_apartment_kitchen_utensil_01.glb",
+    "../../ReplicaCAD/objects/frl_apartment_choppingboard_02.glb",
+    "../../ReplicaCAD/objects/frl_apartment_chair_04.glb",
+    "../../ReplicaCAD/objects/frl_apartment_mat.glb",
+    "../../ReplicaCAD/objects/frl_apartment_indoor_plant_01.glb",
+    "../../ReplicaCAD/objects/frl_apartment_table_01.glb",
+    "../../ReplicaCAD/objects/frl_apartment_monitor.glb",
+    "../../ReplicaCAD/objects/frl_apartment_camera_02.glb",
+    "../../ReplicaCAD/objects/frl_apartment_plate_01.glb",
+    "../../ReplicaCAD/objects/frl_apartment_cup_03.glb",
+    "../../ReplicaCAD/objects/frl_apartment_cup_01.glb",
+    "../../ReplicaCAD/objects/frl_apartment_plate_02.glb",
+    "../../ReplicaCAD/objects/frl_apartment_bowl_06.glb",
+    "../../ReplicaCAD/objects/frl_apartment_cup_02.glb",
+    "../../ReplicaCAD/objects/frl_apartment_sponge_dish.glb",
+    "../../ReplicaCAD/objects/frl_apartment_kitchen_utensil_02.glb",
+    "../../ReplicaCAD/objects/frl_apartment_small_appliance_01.glb",
+    "../../ReplicaCAD/objects/frl_apartment_kitchen_utensil_04.glb",
+    "../../ReplicaCAD/objects/frl_apartment_kitchen_utensil_03.glb",
+    "../../ReplicaCAD/objects/frl_apartment_kitchen_utensil_06.glb",
+    "../../ReplicaCAD/objects/frl_apartment_picture_03.glb",
+    "../../ReplicaCAD/objects/frl_apartment_knifeblock.glb",
+    "../../ReplicaCAD/objects/frl_apartment_kitchen_utensil_08.glb",
+    "../../ReplicaCAD/objects/frl_apartment_kitchen_utensil_09.glb",
+    "../../ReplicaCAD/objects/frl_apartment_small_appliance_02.glb",
+    "../../ReplicaCAD/objects/frl_apartment_setupbox.glb",
+    "../../ReplicaCAD/objects/frl_apartment_picture_02.glb",
+    "../../ReplicaCAD/objects/frl_apartment_handbag.glb",
+    "../../ReplicaCAD/objects/frl_apartment_rack_01.glb",
+    "../../ReplicaCAD/objects/frl_apartment_umbrella.glb",
+    "../../ReplicaCAD/objects/frl_apartment_shoe_01.glb",
+    "../../ReplicaCAD/objects/frl_apartment_shoe_02.glb",
+    "../../ReplicaCAD/objects/frl_apartment_shoe_03.glb",
+    "../../ReplicaCAD/objects/frl_apartment_shoe_04.glb",
+    "../../ReplicaCAD/objects/frl_apartment_cloth_02.glb",
+    "../../ReplicaCAD/objects/frl_apartment_picture_01.glb",
+    "../../ReplicaCAD/objects/frl_apartment_beanbag.glb",
+    "../../ReplicaCAD/objects/frl_apartment_bike_02.glb",
+    "../../ReplicaCAD/objects/frl_apartment_lamp_02.glb",
+    "../../ReplicaCAD/objects/frl_apartment_cloth_01.glb",
+    "../../ReplicaCAD/objects/frl_apartment_cloth_03.glb",
+    "../../ReplicaCAD/objects/frl_apartment_shoebox_01.glb",
+    "../../ReplicaCAD/objects/frl_apartment_monitor_stand.glb",
+    "../../ReplicaCAD/objects/frl_apartment_box.glb",
+    "../../ReplicaCAD/objects/frl_apartment_tvstand.glb",
+    "../../ReplicaCAD/urdf/fridge/body.glb",
+    "../../ReplicaCAD/urdf/fridge/top_door.glb",
+    "../../ReplicaCAD/urdf/fridge/bottom_door.glb",
+    "../../ReplicaCAD/urdf/kitchen_counter/kitchen_counter.glb",
+    "../../ReplicaCAD/urdf/kitchen_counter/drawer1.glb",
+    "../../ReplicaCAD/urdf/kitchen_counter/drawer2.glb",
+    "../../ReplicaCAD/urdf/kitchen_counter/drawer3.glb",
+    "../../ReplicaCAD/urdf/kitchen_counter/drawer4.glb",
+    "../../ReplicaCAD/urdf/kitchenCupboard_01/kitchencupboard_base.glb",
+    "../../ReplicaCAD/urdf/kitchenCupboard_01/kitchencupboard_doorWhole_L.glb",
+    "../../ReplicaCAD/urdf/kitchenCupboard_01/kitchencupboard_doorWhole_R.glb",
+    "../../ReplicaCAD/urdf/kitchenCupboard_01/kitchencupboard_doorWindow_L.glb",
+    "../../ReplicaCAD/urdf/kitchenCupboard_01/kitchencupboard_doorWindow_R.glb",
+    "../../ReplicaCAD/urdf/chestOfDrawers_01/chestOfDrawers_base.glb",
+    "../../ReplicaCAD/urdf/chestOfDrawers_01/chestOfDrawers_DrawerTop.glb",
+    "../../ReplicaCAD/urdf/chestOfDrawers_01/chestOfDrawers_DrawerMid.glb",
+    "../../ReplicaCAD/urdf/chestOfDrawers_01/chestOfDrawers_DrawerBot.glb",
+    "../../ReplicaCAD/urdf/cabinet/cabinet.glb",
+    "../../ReplicaCAD/urdf/cabinet/door.glb",
+    "../../ReplicaCAD/urdf/door2/door2.glb"
+  ],
+  "graph": [
+    {
+      "name": "replicacad_stage_000000",
+      "model": 0,
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000001",
+      "model": 1,
+      "translation": [
+        -1.9956579525706273,
+        1.0839370509764081,
+        0.057981376432922185
+      ],
+      "rotation": [
+        -5.202546155119922e-07,
+        0.17428532217168602,
+        3.540688448338444e-07,
+        0.9846951947049988
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000002",
+      "model": 2,
+      "translation": [
+        4.107420409715755,
+        0.4545634772665478,
+        -0.9759617637063622
+      ],
+      "rotation": [
+        0.07608834649533952,
+        0.9851931327639081,
+        0.01240582484008644,
+        0.15313768377665568
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000003",
+      "model": 3,
+      "translation": [
+        -2.283838131332137,
+        0.3135578462463949,
+        -0.7448115889960697
+      ],
+      "rotation": [
+        0.003130146088478171,
+        -0.7088018102813715,
+        -0.024884760531048596,
+        0.7049616618090858
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000004",
+      "model": 4,
+      "translation": [
+        -2.2172783992605987,
+        0.4316010993063046,
+        -0.4654735649683427
+      ],
+      "rotation": [
+        -5.3508706177631586e-05,
+        -0.7033050135530342,
+        -3.794121261889489e-05,
+        0.7108882145657284
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000005",
+      "model": 5,
+      "translation": [
+        4.188153043316561,
+        0.34794042236171663,
+        7.111236203790895
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000006",
+      "model": 6,
+      "translation": [
+        4.164929883746648,
+        1.052598610751887,
+        3.9504594020091175
+      ],
+      "rotation": [
+        -9.310095174462248e-06,
+        0.7202696729885257,
+        -6.524024165574714e-06,
+        0.6936941675145911
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000007",
+      "model": 7,
+      "translation": [
+        4.174310779977897,
+        0.5726996842237058,
+        3.945805886231077
+      ],
+      "rotation": [
+        -0.002240218854025899,
+        0.7125226047380814,
+        -0.0017542408956175827,
+        0.7016433864832091
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000008",
+      "model": 8,
+      "translation": [
+        4.026192399552099,
+        0.29405463829261547,
+        2.370249720036307
+      ],
+      "rotation": [
+        -1.8721173399394183e-06,
+        0.6829908602411996,
+        5.6510358282139755e-06,
+        0.7304269195419534
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000009",
+      "model": 9,
+      "translation": [
+        4.0896974160083115,
+        0.5851505185292629,
+        0.7366678872025914
+      ],
+      "rotation": [
+        7.237448468732172e-07,
+        0.7067272660275064,
+        2.0450647744800907e-06,
+        0.7074860927598368
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000010",
+      "model": 9,
+      "translation": [
+        4.133461584783093,
+        0.5851506079213841,
+        0.08737107748939381
+      ],
+      "rotation": [
+        1.7505947641037495e-09,
+        0.7077756458815316,
+        -1.364010687365797e-06,
+        0.7064372832000874
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000011",
+      "model": 10,
+      "translation": [
+        3.7939371987166415,
+        0.5235895790058842,
+        4.760266177124348
+      ],
+      "rotation": [
+        0.6259750931802417,
+        -0.0029340605760781757,
+        0.7789802068328833,
+        -0.03655696061110727
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000012",
+      "model": 11,
+      "translation": [
+        3.9079832792159843,
+        0.4008761325929932,
+        5.274956086467376
+      ],
+      "rotation": [
+        -2.306739905008636e-08,
+        0.7071173311301459,
+        9.235819377557379e-08,
+        0.7070962310855365
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000013",
+      "model": 10,
+      "translation": [
+        3.7301722800704185,
+        0.5097065302983645,
+        5.289146874492183
+      ],
+      "rotation": [
+        -0.02286959812082364,
+        -0.0008942271815758629,
+        0.03817138075890754,
+        0.9990090727968883
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000014",
+      "model": 10,
+      "translation": [
+        3.773915728528579,
+        0.5235825700203084,
+        5.837694250298792
+      ],
+      "rotation": [
+        0.032653075146462186,
+        0.019851699333700228,
+        0.9987817592293553,
+        -0.031219931898672112
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000015",
+      "model": 12,
+      "translation": [
+        4.1999296153881005,
+        0.4377844035625458,
+        6.624393450696516
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000016",
+      "model": 13,
+      "translation": [
+        4.088084328551301,
+        0.989412917817415,
+        7.591271953147692
+      ],
+      "rotation": [
+        9.79441209221151e-07,
+        0.9999999983857859,
+        -3.5480688836312037e-06,
+        5.669991141927887e-05
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000017",
+      "model": 13,
+      "translation": [
+        0.698601750053826,
+        0.9896594244183926,
+        4.491301494246492
+      ],
+      "rotation": [
+        4.347222329676625e-06,
+        -0.006552238948652694,
+        -0.0009678225032999223,
+        0.9999780654921705
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000018",
+      "model": 14,
+      "translation": [
+        1.2956230274687652,
+        -0.0013210961847170799,
+        2.31760215753231
+      ],
+      "rotation": [
+        5.9604638581381684e-08,
+        0.4558841708412632,
+        -4.4703478936036264e-08,
+        0.8900391130598523
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000019",
+      "model": 15,
+      "translation": [
+        2.477570047490146,
+        -0.0013582630361395715,
+        5.639058509118264
+      ],
+      "rotation": [
+        8.940696716308558e-08,
+        0.0,
+        0.0,
+        0.999999999999996
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000020",
+      "model": 16,
+      "translation": [
+        1.98938657626566,
+        0.328899428627999,
+        5.8215795328128355
+      ],
+      "rotation": [
+        -4.320768785062536e-06,
+        -0.31225463880142296,
+        -2.3089408030002837e-06,
+        0.9499984423792456
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000021",
+      "model": 17,
+      "translation": [
+        2.024985611883048,
+        0.5476084927498879,
+        7.447507726129283
+      ],
+      "rotation": [
+        0.9222638025252998,
+        0.19076723147075889,
+        -0.32369000657986857,
+        0.09089621328130809
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000022",
+      "model": 18,
+      "translation": [
+        1.9716448279676861,
+        0.3648954460872759,
+        7.533762805288695
+      ],
+      "rotation": [
+        -4.7207497115853944e-05,
+        -0.01908892206740405,
+        2.313570621351629e-05,
+        0.9998177885447408
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000023",
+      "model": 18,
+      "translation": [
+        1.1580844416585023,
+        0.3648966937325895,
+        7.578433390706778
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000024",
+      "model": 19,
+      "translation": [
+        1.1493457676737744,
+        0.47306254148566707,
+        7.42787559277667
+      ],
+      "rotation": [
+        -0.058175983794148504,
+        0.9977215957165273,
+        -0.008332111732960182,
+        0.03313228432388528
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000025",
+      "model": 20,
+      "translation": [
+        0.5354144371977808,
+        0.7759982070792253,
+        7.7025976869031645
+      ],
+      "rotation": [
+        -0.0002913087645444092,
+        0.5732948742286816,
+        -0.0002111344642530227,
+        0.81934904512336
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000026",
+      "model": 8,
+      "translation": [
+        0.5659859003180567,
+        0.29405346729303083,
+        7.778309143315614
+      ],
+      "rotation": [
+        -8.6692999202202e-06,
+        -0.7072070290653781,
+        -1.3410301656747884e-06,
+        0.7070065190389452
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000027",
+      "model": 21,
+      "translation": [
+        2.9747319273530493,
+        0.6320663210434029,
+        7.612372864074937
+      ],
+      "rotation": [
+        -7.332592191661085e-05,
+        -0.16116078150922516,
+        4.758995132514551e-06,
+        0.9869281620786777
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000028",
+      "model": 21,
+      "translation": [
+        2.8196923746659297,
+        0.6321219321975265,
+        7.662763583385308
+      ],
+      "rotation": [
+        0.0007720404537394245,
+        0.0,
+        0.0,
+        0.9999997019767246
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000029",
+      "model": 22,
+      "translation": [
+        3.581236342031576,
+        0.649152358975896,
+        7.674884828187777
+      ],
+      "rotation": [
+        -0.00017936652865753434,
+        0.1112853288045467,
+        -2.4090618340413875e-06,
+        0.9937884802183555
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000030",
+      "model": 23,
+      "translation": [
+        2.6130616384907626,
+        1.3601730293239112,
+        7.848809196723387
+      ],
+      "rotation": [
+        8.940696716308558e-08,
+        0.0,
+        0.0,
+        0.999999999999996
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000031",
+      "model": 24,
+      "translation": [
+        0.543024370367041,
+        1.0820363630109093,
+        5.410867965575855
+      ],
+      "rotation": [
+        -0.00014404578333162562,
+        0.7070231335242199,
+        0.00016873368923545494,
+        0.7071903841550363
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000032",
+      "model": 25,
+      "translation": [
+        0.5990803711981928,
+        1.2333409906568122,
+        5.39041174288141
+      ],
+      "rotation": [
+        -0.003103219083848069,
+        -0.6969487989882824,
+        -0.003943352805446101,
+        0.7171033339685153
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000033",
+      "model": 26,
+      "translation": [
+        0.5279294364154339,
+        1.2356480422313325,
+        5.217218704579864
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000034",
+      "model": 27,
+      "translation": [
+        0.5523298374990443,
+        1.2088190608414795,
+        5.138131119853175
+      ],
+      "rotation": [
+        0.0020103156566638456,
+        0.0026080380193913254,
+        -6.915728590690406e-05,
+        0.9999945759782499
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000035",
+      "model": 28,
+      "translation": [
+        0.4901069205333909,
+        1.184328469422195,
+        5.742168417921027
+      ],
+      "rotation": [
+        0.3935623445435382,
+        0.0020645563377729797,
+        -0.0008176929505506601,
+        0.9192952463396947
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000036",
+      "model": 29,
+      "translation": [
+        0.5814781167140576,
+        1.4479360203725353,
+        5.390846063112845
+      ],
+      "rotation": [
+        0.7070558342773703,
+        -0.002249733907325789,
+        0.0024011494887127877,
+        0.7071500692164365
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000037",
+      "model": 30,
+      "translation": [
+        0.5770455012707786,
+        1.4593083199361199,
+        5.599870757938208
+      ],
+      "rotation": [
+        -0.5105033568719223,
+        -0.0025743639823674167,
+        -0.0010884676704807738,
+        0.8598712173986959
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000038",
+      "model": 31,
+      "translation": [
+        0.5462155844418204,
+        1.2165419161236166,
+        5.070820428042975
+      ],
+      "rotation": [
+        0.0001357779983662983,
+        -0.0021669920533880357,
+        0.00023254477127904592,
+        0.9999976158135104
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000039",
+      "model": 30,
+      "translation": [
+        0.5181468461523764,
+        1.213434677803889,
+        5.168222745909588
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000040",
+      "model": 31,
+      "translation": [
+        0.5447984161544334,
+        1.2165447405167809,
+        5.041646835117987
+      ],
+      "rotation": [
+        0.000142834236612549,
+        -0.0012190560810268396,
+        0.00020789598056581674,
+        0.9999992251396566
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000041",
+      "model": 31,
+      "translation": [
+        0.5463907981726915,
+        1.2165413048331297,
+        5.105510127477967
+      ],
+      "rotation": [
+        -2.620741179270949e-05,
+        0.0012278396170585476,
+        0.00020357640460132105,
+        0.9999992251395469
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000042",
+      "model": 31,
+      "translation": [
+        0.5445772714234409,
+        0.5909459140270678,
+        5.3021365312469095
+      ],
+      "rotation": [
+        -0.523002249431163,
+        -0.1988306724240103,
+        -0.12673039311461762,
+        0.8190692389867746
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000043",
+      "model": 30,
+      "translation": [
+        0.4400757871031084,
+        0.5527911758492078,
+        5.578849522951047
+      ],
+      "rotation": [
+        -0.5011126548275382,
+        0.4988739341054261,
+        0.4990918486932146,
+        0.5009173900054389
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000044",
+      "model": 26,
+      "translation": [
+        0.5300189124623629,
+        0.5695436590310216,
+        5.155018205466123
+      ],
+      "rotation": [
+        0.32902494837268503,
+        -0.6259018953322492,
+        0.6260264690314401,
+        0.3287556248034055
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000045",
+      "model": 29,
+      "translation": [
+        0.5816907324419388,
+        0.3240568431774239,
+        5.08593092290904
+      ],
+      "rotation": [
+        0.9999998762304197,
+        0.0002156695544896254,
+        -0.00044760267861027243,
+        -2.6031337137716445e-05
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000046",
+      "model": 28,
+      "translation": [
+        0.4826445085307782,
+        0.19741574414596988,
+        5.685127746067996
+      ],
+      "rotation": [
+        0.7071046739161809,
+        -0.0011169594803122239,
+        0.00141959833501435,
+        0.7071065812647894
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000047",
+      "model": 28,
+      "translation": [
+        0.5301890798443807,
+        0.1974399028997863,
+        5.512663551062584
+      ],
+      "rotation": [
+        0.6200736680894636,
+        -0.33989458836589687,
+        0.3401466564053918,
+        0.6199036756447629
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000048",
+      "model": 27,
+      "translation": [
+        0.5525290459410067,
+        0.2133696482019867,
+        5.567515491605265
+      ],
+      "rotation": [
+        -0.7070923054991336,
+        -0.00037322758836493924,
+        -7.459810462542343e-05,
+        0.7071211541456031
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000049",
+      "model": 27,
+      "translation": [
+        0.4916593302123013,
+        1.187537058918173,
+        5.717546060394388
+      ],
+      "rotation": [
+        0.9109271620925419,
+        -0.0008586425547886719,
+        -0.002030948843404509,
+        -0.41256132070491836
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000050",
+      "model": 32,
+      "translation": [
+        0.8955980928025115,
+        0.6050039380843264,
+        2.4133185315665733
+      ],
+      "rotation": [
+        -3.286929789455268e-05,
+        0.9517782128226576,
+        3.353481517146222e-05,
+        0.3067869478826194
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000051",
+      "model": 33,
+      "translation": [
+        0.5239684729003784,
+        0.6529611752447907,
+        2.300429283186491
+      ],
+      "rotation": [
+        0.0005980199202895199,
+        0.0,
+        0.0,
+        0.9999998211860716
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000052",
+      "model": 34,
+      "translation": [
+        0.9775079464226497,
+        0.6560430243813424,
+        2.6453982116452166
+      ],
+      "rotation": [
+        0.0027169042542551174,
+        -0.3138118960367621,
+        -0.0033933564317574654,
+        0.9494752221460087
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000053",
+      "model": 35,
+      "translation": [
+        0.5070147814913071,
+        0.2753303231047769,
+        2.2997903759476386
+      ],
+      "rotation": [
+        0.0006905339541844884,
+        0.0,
+        0.0,
+        0.9999997615814007
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000054",
+      "model": 36,
+      "translation": [
+        1.056504680363681,
+        0.31421184111688405,
+        2.677142093626222
+      ],
+      "rotation": [
+        0.00010474729691059208,
+        -0.32805373960307943,
+        -0.00014383937971839135,
+        0.944659045513603
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000055",
+      "model": 37,
+      "translation": [
+        1.0512380365598288,
+        0.24125624506094362,
+        2.6805861263589583
+      ],
+      "rotation": [
+        1.535433157502379e-05,
+        -0.3162568230938006,
+        -3.497805231354817e-06,
+        0.9486736117330482
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000056",
+      "model": 38,
+      "translation": [
+        -2.2401796989932157,
+        0.46910255187718897,
+        3.8506248502297877
+      ],
+      "rotation": [
+        -6.070461143691885e-07,
+        -0.7071175695449806,
+        -2.5984431759412804e-07,
+        0.7070959926632052
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000057",
+      "model": 38,
+      "translation": [
+        -2.26952179929032,
+        0.4704890177872069,
+        -2.0904483131779408
+      ],
+      "rotation": [
+        -0.0016085347784488364,
+        -0.7918027373395422,
+        -0.0020697491013843424,
+        0.6107712778906125
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000058",
+      "model": 39,
+      "translation": [
+        -1.550700879250923,
+        0.003622475121917826,
+        1.5342658990391274
+      ],
+      "rotation": [
+        2.980232038559247e-08,
+        -0.7071067811865459,
+        5.960464077118494e-08,
+        0.7071067811865459
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000059",
+      "model": 40,
+      "translation": [
+        3.4197291647131647,
+        1.692999413000504,
+        -4.133856821097971
+      ],
+      "rotation": [
+        -5.161594162927037e-05,
+        -0.00154321757145199,
+        2.0375915710243207e-07,
+        0.9999988079069295
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000060",
+      "model": 41,
+      "translation": [
+        0.41439489989170397,
+        0.6632212233962491,
+        -0.17470338097700733
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000061",
+      "model": 42,
+      "translation": [
+        0.4372712999399257,
+        1.543347558972872,
+        -0.5273685490286963
+      ],
+      "rotation": [
+        -1.7763568394002418e-15,
+        0.9999999999999951,
+        -8.94069671630855e-08,
+        -4.371138828673772e-08
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000062",
+      "model": 43,
+      "translation": [
+        0.4675843503131788,
+        1.764217499666931,
+        -0.5872958740340483
+      ],
+      "rotation": [
+        -0.028345323069319035,
+        -0.7040526015094205,
+        0.023521307001349228,
+        0.7091919522138286
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000063",
+      "model": 44,
+      "translation": [
+        -2.0298574478178,
+        0.9644865502930506,
+        2.6329260477825285
+      ],
+      "rotation": [
+        -8.41634937560977e-06,
+        0.24175472562529876,
+        8.566543671752036e-07,
+        0.9703373910997493
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000064",
+      "model": 45,
+      "translation": [
+        -2.0326713781909205,
+        0.9989798296190667,
+        2.6403462389054058
+      ],
+      "rotation": [
+        0.06220954650957071,
+        -0.7710536711373245,
+        -0.017633618770933165,
+        0.6334787005399392
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000065",
+      "model": 46,
+      "translation": [
+        -2.2408843935257448,
+        0.983924483311843,
+        2.5616791893638684
+      ],
+      "rotation": [
+        -2.8294665841188365e-05,
+        -0.7948361063796754,
+        -1.4519568184805403e-05,
+        0.6068241615029772
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000066",
+      "model": 47,
+      "translation": [
+        -2.080934439552948,
+        0.9903172720223665,
+        2.2550046161632054
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000067",
+      "model": 48,
+      "translation": [
+        -2.0212689069012413,
+        0.9860159838062513,
+        1.962052314089754
+      ],
+      "rotation": [
+        0.000488281220896173,
+        0.0,
+        0.0,
+        0.9999998807907176
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000068",
+      "model": 49,
+      "translation": [
+        -2.2144558426775047,
+        0.9960266370638448,
+        2.0379445562275342
+      ],
+      "rotation": [
+        -1.2943657693927478e-05,
+        0.6643976634732465,
+        1.2434369759739903e-05,
+        0.7473792507483324
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000069",
+      "model": 50,
+      "translation": [
+        -2.3765419384008477,
+        0.9901297256125796,
+        2.0387958012602496
+      ],
+      "rotation": [
+        1.2481838923814052e-05,
+        0.9967251443814056,
+        -9.3486815099251e-05,
+        -0.08086394537916987
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000070",
+      "model": 51,
+      "translation": [
+        -2.39422155468651,
+        1.0234393756836653,
+        1.9150788320466745
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000071",
+      "model": 52,
+      "translation": [
+        -2.1577768278573473,
+        1.094117187301409,
+        1.1320104880828685
+      ],
+      "rotation": [
+        -1.2546704057386706e-05,
+        -0.6980436444971202,
+        6.473955182357041e-06,
+        0.7160552144757039
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000072",
+      "model": 53,
+      "translation": [
+        -2.393288374197755,
+        0.9958334886794491,
+        0.739746062509862
+      ],
+      "rotation": [
+        0.00018358776269682806,
+        -0.7074423425429952,
+        0.00017326713697333952,
+        0.7067710154295467
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000073",
+      "model": 54,
+      "translation": [
+        -2.444240719419895,
+        1.07352401047594,
+        0.8247272897509641
+      ],
+      "rotation": [
+        0.0008457278599962577,
+        0.0,
+        0.0,
+        0.9999996423721296
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000074",
+      "model": 54,
+      "translation": [
+        -2.444071442228733,
+        1.0735310359159485,
+        0.7699508810956104
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000075",
+      "model": 54,
+      "translation": [
+        -2.444080978971897,
+        1.0735252001548916,
+        0.7153729571573297
+      ],
+      "rotation": [
+        0.0005980199202895199,
+        0.0,
+        0.0,
+        0.9999998211860716
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000076",
+      "model": 54,
+      "translation": [
+        -2.439621359449802,
+        1.0735386684249488,
+        0.6612882268538393
+      ],
+      "rotation": [
+        0.0003452670061960783,
+        0.0,
+        0.0,
+        0.9999999403953455
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000077",
+      "model": 54,
+      "translation": [
+        -2.3755842748703344,
+        1.0455457070137173,
+        0.8185636176340143
+      ],
+      "rotation": [
+        0.0005980199202895199,
+        0.0,
+        0.0,
+        0.9999998211860716
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000078",
+      "model": 54,
+      "translation": [
+        -2.3752742529920505,
+        1.0455411689549614,
+        0.7614319548317205
+      ],
+      "rotation": [
+        -7.394045678633115e-05,
+        -0.007803070824558746,
+        0.00037530294502919096,
+        0.9999694824174462
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000079",
+      "model": 54,
+      "translation": [
+        -2.3752459747597836,
+        1.0455294887106037,
+        0.7068356780545527
+      ],
+      "rotation": [
+        -0.00010305114847152908,
+        -0.005734181962913245,
+        -0.00010014435974891413,
+        0.9999835491190764
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000080",
+      "model": 54,
+      "translation": [
+        -2.3753357865870286,
+        1.0455514221442006,
+        0.6512400181799256
+      ],
+      "rotation": [
+        -0.00012087525828976327,
+        -0.0013741395669060246,
+        6.691049202346422e-05,
+        0.9999990463258496
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000081",
+      "model": 55,
+      "translation": [
+        -2.37639330363218,
+        1.0064355578506365,
+        0.5168919279967668
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000082",
+      "model": 37,
+      "translation": [
+        -2.462873620451536,
+        1.080273484338531,
+        0.31750580947430523
+      ],
+      "rotation": [
+        0.41823890081580006,
+        0.5699823996150237,
+        -0.4174839782004595,
+        0.5708795091080158
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000083",
+      "model": 56,
+      "translation": [
+        -2.2339015470141543,
+        1.0536260587741557,
+        0.3960886158897984
+      ],
+      "rotation": [
+        -0.016894601606630883,
+        0.980397313788264,
+        -0.1706264161355282,
+        -0.09706856169767246
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000084",
+      "model": 57,
+      "translation": [
+        -2.3510213018811834,
+        1.0769024740322775,
+        0.3315389076025292
+      ],
+      "rotation": [
+        1.4381769233306652e-06,
+        0.005683788564060397,
+        7.434350095542045e-07,
+        0.9999838471420116
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000085",
+      "model": 58,
+      "translation": [
+        -2.1922357271053294,
+        1.0207934350929246,
+        0.31032127808501464
+      ],
+      "rotation": [
+        -6.918581831883258e-06,
+        0.9747132283140592,
+        -6.492099292955112e-06,
+        -0.22345944253839573
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000086",
+      "model": 59,
+      "translation": [
+        -2.2383486407085798,
+        1.0432830064032899,
+        0.20288169660460803
+      ],
+      "rotation": [
+        -7.581105455756751e-05,
+        -0.0025360439904036024,
+        4.968914254277848e-06,
+        0.9999967813492565
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000087",
+      "model": 60,
+      "translation": [
+        -2.323086477026056,
+        1.0883071898357457,
+        0.000176499952074239
+      ],
+      "rotation": [
+        -8.414540174909817e-06,
+        -0.7070880948481131,
+        -5.537138208786302e-06,
+        0.7071254669594368
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000088",
+      "model": 61,
+      "translation": [
+        0.4426179806521304,
+        1.0454591548309102,
+        -0.5731640165488877
+      ],
+      "rotation": [
+        0.830719255915923,
+        0.0,
+        0.0,
+        0.5566915823420499
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000089",
+      "model": 62,
+      "translation": [
+        -2.422472662890697,
+        1.5306948527030095,
+        -1.5477773880428713
+      ],
+      "rotation": [
+        0.09628244781754082,
+        -0.7015621928300657,
+        0.09658715419788544,
+        0.6994362740648259
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000090",
+      "model": 63,
+      "translation": [
+        -2.323607023799576,
+        1.8719510016430925,
+        -2.079638359900044
+      ],
+      "rotation": [
+        0.0849021628158422,
+        -0.7538509034442186,
+        0.032802303528602535,
+        0.650710724522614
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000091",
+      "model": 64,
+      "translation": [
+        -2.0790531625404522,
+        0.31483264369793473,
+        -2.5388489370048997
+      ],
+      "rotation": [
+        -5.110719598634004e-07,
+        0.0013810491655023818,
+        -7.098410605977807e-06,
+        0.9999990463258221
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000092",
+      "model": 65,
+      "translation": [
+        -2.2892425340503277,
+        0.5602593977738366,
+        -2.7617138196780906
+      ],
+      "rotation": [
+        0.009579006068504986,
+        0.0027104125766447065,
+        0.9966888488974132,
+        -0.0806984187574537
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000093",
+      "model": 66,
+      "translation": [
+        -1.8199461568230866,
+        0.3602124978289363,
+        -2.5655168133811905
+      ],
+      "rotation": [
+        -0.0001868897445488739,
+        0.9999253323749705,
+        0.00906204486765278,
+        0.008195980102746183
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000094",
+      "model": 67,
+      "translation": [
+        -2.093289691405659,
+        0.3602185008550056,
+        -2.5665119720285725
+      ],
+      "rotation": [
+        -0.00020568784856059118,
+        0.9999609222769923,
+        0.008827954733095576,
+        -0.00042287904458057987
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000095",
+      "model": 68,
+      "translation": [
+        -2.333083215536946,
+        0.357759296656825,
+        -2.5114650538477123
+      ],
+      "rotation": [
+        -0.0018959533065073,
+        0.9990470922035818,
+        0.017451460217690874,
+        0.03995947268042608
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000096",
+      "model": 69,
+      "translation": [
+        -1.8625753647610575,
+        0.16332561435833237,
+        -2.559375085535354
+      ],
+      "rotation": [
+        -0.0027237091123791433,
+        0.9998582822791849,
+        -0.010479583943448417,
+        0.01289089162009293
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000097",
+      "model": 70,
+      "translation": [
+        -2.206169113093824,
+        0.9419560058682306,
+        -2.332082291237297
+      ],
+      "rotation": [
+        5.58793511607035e-09,
+        0.9987499121177931,
+        -5.9604641238083734e-08,
+        0.04998612852279184
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000098",
+      "model": 71,
+      "translation": [
+        -0.3670506930272897,
+        1.3813003051753292,
+        -2.975669314398404
+      ],
+      "rotation": [
+        8.940696257343818e-08,
+        0.6992200254081838,
+        -5.960464171562545e-08,
+        0.7149065365963353
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000099",
+      "model": 72,
+      "translation": [
+        3.7999427476839047,
+        0.3372600305818876,
+        1.5678577269893819
+      ],
+      "rotation": [
+        -0.0017236772944050553,
+        0.8989260913190268,
+        0.026300220290147842,
+        0.4373067684076831
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000100",
+      "model": 72,
+      "translation": [
+        3.8958638610694893,
+        0.33725961521804765,
+        3.1576456328782148
+      ],
+      "rotation": [
+        0.004165802825074608,
+        0.9736450905448725,
+        0.026024522515622373,
+        0.22654052170091638
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000101",
+      "model": 73,
+      "translation": [
+        -0.551209939169045,
+        0.4536360645402108,
+        -1.0196206032539004
+      ],
+      "rotation": [
+        0.08465908187001032,
+        0.9962323292934435,
+        -0.000978305584486298,
+        -0.01878906186242924
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000102",
+      "model": 74,
+      "translation": [
+        0.6497997234400827,
+        1.1433340348303318,
+        2.177875831235724
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000103",
+      "model": 74,
+      "translation": [
+        1.1436370800074656,
+        1.1433689631521702,
+        2.5776448990000063
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000104",
+      "model": 75,
+      "translation": [
+        -2.2343876322829805,
+        1.0719663597103843,
+        -1.8839233074713455
+      ],
+      "rotation": [
+        -1.7763568394002418e-15,
+        0.9999999999999951,
+        -8.94069671630855e-08,
+        -4.371138828673772e-08
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000105",
+      "model": 76,
+      "translation": [
+        -2.245216549769531,
+        1.202465687575864,
+        -2.1152903009276547
+      ],
+      "rotation": [
+        3.7252897376476432e-09,
+        0.9990929053191967,
+        -8.940695370354344e-08,
+        0.042583641704750444
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000106",
+      "model": 77,
+      "translation": [
+        -2.302423760735717,
+        1.3857124848291278,
+        -1.083843636032615
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000107",
+      "model": 78,
+      "translation": [
+        0.44275546192896376,
+        1.3677609300247515,
+        -0.6202413967664994
+      ],
+      "rotation": [
+        -1.7763568394002418e-15,
+        0.9999999999999951,
+        -8.94069671630855e-08,
+        -4.371138828673772e-08
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000108",
+      "model": 79,
+      "translation": [
+        4.180875379491428,
+        1.7446024328401433,
+        3.9581493301553787
+      ],
+      "rotation": [
+        -0.009717144161947982,
+        0.7069830363825942,
+        -0.004533467390603577,
+        0.7071492141337653
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000109",
+      "model": 79,
+      "translation": [
+        0.5360783920138471,
+        0.8969253691870651,
+        5.64833215915369
+      ],
+      "rotation": [
+        0.0017168943304563806,
+        3.311691034467911e-05,
+        -0.00219083693809747,
+        0.9999961256978145
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000110",
+      "model": 31,
+      "translation": [
+        4.19816869132963,
+        1.4229390890756874,
+        3.8625429417406565
+      ],
+      "rotation": [
+        -0.00021255071900758675,
+        0.8249386060292676,
+        0.5652222706910005,
+        0.00018926064031600317
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000111",
+      "model": 31,
+      "translation": [
+        4.197600338038609,
+        1.4214713667526906,
+        4.014418425396742
+      ],
+      "rotation": [
+        -0.0003542584201854034,
+        0.7173331759203685,
+        0.696730175425156,
+        0.00022776523149655673
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000112",
+      "model": 31,
+      "translation": [
+        4.197846850437962,
+        1.3944192199414716,
+        4.014852383860682
+      ],
+      "rotation": [
+        0.00022432949813257542,
+        0.7173176877351173,
+        0.696746158232661,
+        -0.00027482112152103067
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_object_000113",
+      "model": 80,
+      "translation": [
+        3.151346543163527,
+        0.37619612738490105,
+        7.716032639145851
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "replicacad_articulation_000114",
+      "translation": [
+        -2.1782121658325195,
+        0.9755649566650391,
+        3.2299728393554688
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "children": [
+        {
+          "name": "replicacad_articulation_000114_link_000_root",
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "children": [
+            {
+              "name": "replicacad_articulation_000114_link_001_body",
+              "translation": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "rotation": [
+                0.7050545034470638,
+                0.0,
+                0.0,
+                0.7091531196920834
+              ],
+              "children": [
+                {
+                  "name": "replicacad_articulation_000114_link_001_body_visual_000",
+                  "model": 81,
+                  "translation": [
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "scaling": [
+                    1.0,
+                    1.0,
+                    1.0
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000114_link_002_top_door",
+                  "translation": [
+                    0.322,
+                    0.353,
+                    -0.385
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000114_link_002_top_door_visual_001",
+                      "model": 82,
+                      "translation": [
+                        0.014,
+                        -0.355,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000114_link_003_bottom_door",
+                  "translation": [
+                    0.322,
+                    0.353,
+                    0.531
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000114_link_003_bottom_door_visual_002",
+                      "model": 83,
+                      "translation": [
+                        0.022,
+                        -0.354,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "replicacad_articulation_000115",
+      "translation": [
+        -2.0,
+        0.04,
+        1.2346
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scaling": [
+        0.98,
+        0.98,
+        0.98
+      ],
+      "children": [
+        {
+          "name": "replicacad_articulation_000115_link_000_root",
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "children": [
+            {
+              "name": "replicacad_articulation_000115_link_001_body",
+              "translation": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "children": [
+                {
+                  "name": "replicacad_articulation_000115_link_001_body_visual_000",
+                  "model": 84,
+                  "translation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "scaling": [
+                    1.0,
+                    1.0,
+                    1.0
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000115_link_002_drawer1_top",
+                  "translation": [
+                    -0.159398,
+                    0.6,
+                    1.0705
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000115_link_002_drawer1_top_visual_001",
+                      "model": 85,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000115_link_003_drawer1_bottom",
+                  "translation": [
+                    -0.159398,
+                    0.232,
+                    1.0705
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000115_link_003_drawer1_bottom_visual_002",
+                      "model": 85,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000115_link_004_drawer2_top",
+                  "translation": [
+                    -0.156649,
+                    0.664,
+                    -0.28605
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000115_link_004_drawer2_top_visual_003",
+                      "model": 86,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000115_link_005_drawer2_middle",
+                  "translation": [
+                    -0.156649,
+                    0.42,
+                    -0.28605
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000115_link_005_drawer2_middle_visual_004",
+                      "model": 86,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000115_link_006_drawer2_bottom",
+                  "translation": [
+                    -0.156649,
+                    0.18,
+                    -0.28605
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000115_link_006_drawer2_bottom_visual_005",
+                      "model": 86,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000115_link_007_drawer3",
+                  "translation": [
+                    -0.167635,
+                    0.53,
+                    -1.0264
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000115_link_007_drawer3_visual_006",
+                      "model": 87,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000115_link_008_drawer4",
+                  "translation": [
+                    -0.167635,
+                    0.236,
+                    -1.0264
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000115_link_008_drawer4_visual_007",
+                      "model": 88,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "replicacad_articulation_000116",
+      "translation": [
+        -2.3,
+        1.54,
+        1.2346
+      ],
+      "rotation": [
+        0.7071067811865476,
+        0.0,
+        0.0,
+        -0.7071067811865476
+      ],
+      "scaling": [
+        0.38,
+        0.38,
+        0.38
+      ],
+      "children": [
+        {
+          "name": "replicacad_articulation_000116_link_000_root",
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "children": [
+            {
+              "name": "replicacad_articulation_000116_link_001_body",
+              "translation": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "rotation": [
+                0.7050545034470638,
+                0.0,
+                0.0,
+                0.7091531196920834
+              ],
+              "children": [
+                {
+                  "name": "replicacad_articulation_000116_link_001_body_visual_000",
+                  "model": 89,
+                  "translation": [
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "scaling": [
+                    1.0,
+                    1.0,
+                    1.0
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000116_link_002_kitchencupboard_doorWhole_1L",
+                  "translation": [
+                    0.55,
+                    1.33,
+                    1.625
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000116_link_002_kitchencupboard_doorWhole_1L_visual_001",
+                      "model": 90,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000116_link_003_kitchencupboard_doorWhole_1R",
+                  "translation": [
+                    0.55,
+                    1.33,
+                    -0.025
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000116_link_003_kitchencupboard_doorWhole_1R_visual_002",
+                      "model": 91,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000116_link_004_kitchencupboard_doorWhole_2L",
+                  "translation": [
+                    0.55,
+                    1.33,
+                    -0.055
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000116_link_004_kitchencupboard_doorWhole_2L_visual_003",
+                      "model": 90,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000116_link_005_kitchencupboard_doorWhole_2R",
+                  "translation": [
+                    0.55,
+                    1.33,
+                    -1.695
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000116_link_005_kitchencupboard_doorWhole_2R_visual_004",
+                      "model": 91,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000116_link_006_kitchencupboard_doorWindow_1L",
+                  "translation": [
+                    0.55,
+                    1.315,
+                    3.78
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000116_link_006_kitchencupboard_doorWindow_1L_visual_005",
+                      "model": 92,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000116_link_007_kitchencupboard_doorWindow_1R",
+                  "translation": [
+                    0.55,
+                    1.315,
+                    1.66
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000116_link_007_kitchencupboard_doorWindow_1R_visual_006",
+                      "model": 93,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000116_link_008_kitchencupboard_doorWindow_2L",
+                  "translation": [
+                    0.55,
+                    1.315,
+                    -1.7
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000116_link_008_kitchencupboard_doorWindow_2L_visual_007",
+                      "model": 92,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000116_link_009_kitchencupboard_doorWindow_2R",
+                  "translation": [
+                    0.55,
+                    1.315,
+                    -3.81
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000116_link_009_kitchencupboard_doorWindow_2R_visual_008",
+                      "model": 93,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "replicacad_articulation_000117",
+      "translation": [
+        -2.318626880645752,
+        0.0,
+        -1.3263527154922485
+      ],
+      "rotation": [
+        0.7071067811865476,
+        0.0,
+        0.0,
+        -0.7071067811865476
+      ],
+      "scaling": [
+        0.4,
+        0.4,
+        0.4
+      ],
+      "children": [
+        {
+          "name": "replicacad_articulation_000117_link_000_root",
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "children": [
+            {
+              "name": "replicacad_articulation_000117_link_001_body",
+              "translation": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "rotation": [
+                0.7050545034470638,
+                0.0,
+                0.0,
+                0.7091531196920834
+              ],
+              "children": [
+                {
+                  "name": "replicacad_articulation_000117_link_001_body_visual_000",
+                  "model": 94,
+                  "translation": [
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "scaling": [
+                    1.0,
+                    1.0,
+                    1.0
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000117_link_002_drawer_topL",
+                  "translation": [
+                    -0.271285,
+                    2.68351,
+                    0.489752
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000117_link_002_drawer_topL_visual_001",
+                      "model": 95,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000117_link_003_drawer_topR",
+                  "translation": [
+                    -0.271285,
+                    2.68351,
+                    -0.543752
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000117_link_003_drawer_topR_visual_002",
+                      "model": 95,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000117_link_004_drawer_midL",
+                  "translation": [
+                    -0.271285,
+                    1.60997,
+                    0.489752
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000117_link_004_drawer_midL_visual_003",
+                      "model": 96,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000117_link_005_drawer_midR",
+                  "translation": [
+                    -0.271285,
+                    1.60997,
+                    -0.5489752
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000117_link_005_drawer_midR_visual_004",
+                      "model": 96,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000117_link_006_drawer_botL",
+                  "translation": [
+                    -0.271285,
+                    0.290606,
+                    0.489752
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000117_link_006_drawer_botL_visual_005",
+                      "model": 97,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000117_link_007_drawer_botR",
+                  "translation": [
+                    -0.271285,
+                    0.290606,
+                    -0.5489752
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000117_link_007_drawer_botR_visual_006",
+                      "model": 97,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "replicacad_articulation_000118",
+      "translation": [
+        1.317476749420166,
+        0.05,
+        1.8777843713760376
+      ],
+      "rotation": [
+        0.0,
+        0.9489847656439706,
+        0.0,
+        0.315321922129842
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "children": [
+        {
+          "name": "replicacad_articulation_000118_link_000_root",
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "children": [
+            {
+              "name": "replicacad_articulation_000118_link_001_body",
+              "translation": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "children": [
+                {
+                  "name": "replicacad_articulation_000118_link_001_body_visual_000",
+                  "model": 98,
+                  "translation": [
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "scaling": [
+                    1.0,
+                    1.0,
+                    1.0
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000118_link_002_left_door",
+                  "translation": [
+                    -0.43573,
+                    0.46828,
+                    0.18
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000118_link_002_left_door_visual_001",
+                      "model": 99,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "replicacad_articulation_000118_link_003_right_door",
+                  "translation": [
+                    0.34,
+                    0.46828,
+                    0.2
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "children": [
+                    {
+                      "name": "replicacad_articulation_000118_link_003_right_door_visual_002",
+                      "model": 99,
+                      "translation": [
+                        0.0,
+                        0.0,
+                        0.0
+                      ],
+                      "rotation": [
+                        0.0,
+                        0.0,
+                        0.0,
+                        1.0
+                      ],
+                      "scaling": [
+                        1.0,
+                        1.0,
+                        1.0
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "replicacad_articulation_000119",
+      "translation": [
+        -0.35,
+        2.4,
+        -2.65
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "scaling": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "children": [
+        {
+          "name": "replicacad_articulation_000119_link_000_root",
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "children": [
+            {
+              "name": "replicacad_articulation_000119_link_001_body",
+              "translation": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "rotation": [
+                0.0,
+                -0.7032794192004103,
+                0.0,
+                0.7109135380122773
+              ],
+              "children": [
+                {
+                  "name": "replicacad_articulation_000119_link_001_body_visual_000",
+                  "model": 100,
+                  "translation": [
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "scaling": [
+                    1.0,
+                    1.0,
+                    1.0
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "animations": []
+}

@@ -769,6 +769,7 @@ class GenesisStyleRenderer:
         self.camera_updated = False
         self._last_camera_uid: Optional[str] = None
         self._pending_rigid_updates: dict[str, np.ndarray] = {}
+        self._rigid_node_handles: dict[str, int] = {}
         self._t = -1
         self._destroyed = False
 
@@ -991,6 +992,7 @@ class GenesisStyleRenderer:
         builder = GlbSceneBuilder()
         material_indices: dict[str, int] = {}
         renderable_count = 0
+        rigid_node_names: list[str] = []
 
         for shape_name, record in self._shapes.items():
             vertices, triangles, normals, uvs = self._shape_to_mesh(record)
@@ -1021,6 +1023,8 @@ class GenesisStyleRenderer:
                 material_index=material_indices[material_name],
                 node_matrix=_transform_to_gltf_node_matrix(record.transform) if record.kind == "rigid" else None,
             )
+            if record.kind == "rigid":
+                rigid_node_names.append(shape_name)
             renderable_count += 1
 
         if renderable_count == 0:
@@ -1030,6 +1034,10 @@ class GenesisStyleRenderer:
         self._scene.load_scene(str(self._scene_path))
         self._scene_loaded = True
         self._pending_rigid_updates.clear()
+        self._rigid_node_handles.clear()
+        if rigid_node_names and hasattr(self._scene, "get_node_handles"):
+            handles = self._scene.get_node_handles(rigid_node_names)
+            self._rigid_node_handles.update(zip(rigid_node_names, handles))
         self._scene.set_ambient(self._ambient_top, self._ambient_bottom)
         self._scene.set_default_light(
             self._default_light_direction,
@@ -1076,6 +1084,7 @@ class GenesisStyleRenderer:
         self._camera_dirty = False
         self._last_camera_uid = None
         self._pending_rigid_updates.clear()
+        self._rigid_node_handles.clear()
         self._shapes.clear()
         self._surfaces.clear()
         self._scene_loaded = False
@@ -1133,8 +1142,30 @@ class GenesisStyleRenderer:
 
     def _apply_pending_incremental_updates(self) -> None:
         if self._pending_rigid_updates:
-            for shape_name, matrix in self._pending_rigid_updates.items():
-                self._scene.update_node_transform(shape_name, np.asarray(matrix, dtype=np.float32).reshape(-1).tolist())
+            shape_names = list(self._pending_rigid_updates)
+            if hasattr(self._scene, "update_node_transforms_batch"):
+                missing = [
+                    name for name in shape_names if name not in self._rigid_node_handles
+                ]
+                if missing:
+                    handles = self._scene.get_node_handles(missing)
+                    self._rigid_node_handles.update(zip(missing, handles))
+                self._scene.update_node_transforms_batch(
+                    [self._rigid_node_handles[name] for name in shape_names],
+                    [
+                        np.asarray(
+                            self._pending_rigid_updates[name], dtype=np.float32
+                        ).reshape(-1).tolist()
+                        for name in shape_names
+                    ],
+                )
+            else:
+                for shape_name in shape_names:
+                    matrix = self._pending_rigid_updates[shape_name]
+                    self._scene.update_node_transform(
+                        shape_name,
+                        np.asarray(matrix, dtype=np.float32).reshape(-1).tolist(),
+                    )
             self._pending_rigid_updates.clear()
         if self._camera_dirty:
             self._apply_latest_camera()

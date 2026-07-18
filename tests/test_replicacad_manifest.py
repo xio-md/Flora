@@ -113,7 +113,7 @@ class ReplicaCADManifestTests(unittest.TestCase):
         self.assertEqual(first["determinism_digest"], second["determinism_digest"])
         self.assertEqual(
             first["determinism_digest"],
-            "d03d00dc2f16d8eaaac47dddad5653a23e7fc06dedd3b3b44d94a590b0c107e3",
+            "9d946c4202f5e037e36454a744bdfbd560428552ccf041f1e69954b5b8300b84",
         )
         self.assertEqual(first["summary"], second["summary"])
         self.assertEqual(first["summary"]["missing_required_visual_assets"], 0)

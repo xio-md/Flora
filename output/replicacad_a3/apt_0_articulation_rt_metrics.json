@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "scene": "apt_0",
+  "mode": "rt",
+  "resolution": [
+    1280,
+    720
+  ],
+  "scene_path": "output/replicacad_a3/apt_0.donut_scene.json",
+  "closed_image": "output/replicacad_a3/apt_0_articulation_closed_rt.png",
+  "open_image": "output/replicacad_a3/apt_0_articulation_open_rt.png",
+  "load_ms": 479.66939999969327,
+  "unique_models": 101,
+  "render_instances": 145,
+  "graph_nodes": 188,
+  "articulated_instances": 6,
+  "articulated_links": 37,
+  "articulated_visuals": 31,
+  "compiled_control_nodes": 157,
+  "native_node_handles": 380,
+  "handle_resolve_ms": 0.11180000001331791,
+  "updated_joints": 7,
+  "pose_update_call_ms": 0.017300000763498247,
+  "max_world_transform_delta": 0.9127639532089233,
+  "mean_rgb_delta": 1.5519379340277777,
+  "changed_pixel_ratio": 0.054522569444444446,
+  "native_scene_stats": {
+    "mesh_instances": 171,
+    "unique_meshes": 127,
+    "unique_geometries": 127,
+    "unique_materials": 111,
+    "unique_vertices": 326228,
+    "unique_indices": 414018,
+    "shadow_instances": 171
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "scene": "apt_0",
+  "resolution": [
+    64,
+    48
+  ],
+  "stress_frames": 1000,
+  "warmup_frames": 50,
+  "rt_shadows": true,
+  "shadow_samples": 8,
+  "movable_joints_per_frame": 26,
+  "cpu_fk_reference_ms_per_pose": 0.3704537000012351,
+  "timing_ms_per_frame": {
+    "native_pose_update_cpu": 0.01899900001080823,
+    "scene_refresh_record_cpu": 0.14267170000000015,
+    "shadow_as_record_cpu": 0.1890346000000002,
+    "render_execute_readback_and_python_remaining": 0.6937138000352621,
+    "render_batch_wall": 1.0254201000352623,
+    "full_stress_loop_wall": 1.0521374999989348
+  },
+  "consistency": {
+    "batch_hash": "74a89ba1ca23ba4b48f3a74525a024950c75778e0f43698b1108fbea3737a377",
+    "sequential_hash": "74a89ba1ca23ba4b48f3a74525a024950c75778e0f43698b1108fbea3737a377",
+    "reference_hash": "698ee6192919d1becd35ad6a574de91e833c2c1907437288e5a6723356c26dba",
+    "restored_hash": "698ee6192919d1becd35ad6a574de91e833c2c1907437288e5a6723356c26dba",
+    "max_restored_world_transform_error": 0.0
+  },
+  "resources": {
+    "scene_load_count": 1,
+    "node_handle_count_before": 380,
+    "node_handle_count_after": 380,
+    "unexpected_as_builds_after_warmup": 0,
+    "rss_before_bytes": 358125568,
+    "rss_after_bytes": 358264832,
+    "rss_growth_mb": 0.1328125,
+    "max_rss_growth_mb": 64.0,
+    "native_scene_stats_before": {
+      "mesh_instances": 171,
+      "unique_meshes": 127,
+      "unique_geometries": 127,
+      "unique_materials": 111,
+      "unique_vertices": 326228,
+      "unique_indices": 414018,
+      "shadow_instances": 171
+    },
+    "native_scene_stats_after": {
+      "mesh_instances": 171,
+      "unique_meshes": 127,
+      "unique_geometries": 127,
+      "unique_materials": 111,
+      "unique_vertices": 326228,
+      "unique_indices": 414018,
+      "shadow_instances": 171
+    }
+  },
+  "checks": {
+    "single_scene_load": true,
+    "batch_matches_sequential": true,
+    "restored_raster_frame_matches": true,
+    "restored_world_transform_error_le_1e_6": true,
+    "native_handle_count_stable": true,
+    "native_scene_stats_stable": true,
+    "scene_artifact_not_rewritten": true,
+    "no_as_rebuild_after_warmup": true,
+    "rss_growth_within_limit": true
+  },
+  "passed": true
+}

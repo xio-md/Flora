@@ -44,9 +44,21 @@ inline void bind_rtxns_headless_pbr_module(py::module_ &m)
             &rtxns::python::HeadlessPbrScene::update_node_transform,
             py::arg("name"),
             py::arg("matrix_values"))
+        .def_property_readonly("node_handle_count",
+            &rtxns::python::HeadlessPbrScene::node_handle_count)
+        .def("get_node_handles",
+            &rtxns::python::HeadlessPbrScene::get_node_handles,
+            py::arg("names"))
+        .def("update_node_transforms_batch",
+            &rtxns::python::HeadlessPbrScene::update_node_transforms_batch,
+            py::arg("handles"),
+            py::arg("matrices"))
         .def("get_node_world_transform",
             &rtxns::python::HeadlessPbrScene::get_node_world_transform,
             py::arg("name"))
+        .def("get_node_world_transform_by_handle",
+            &rtxns::python::HeadlessPbrScene::get_node_world_transform_by_handle,
+            py::arg("handle"))
         .def("get_scene_stats",
             [](const rtxns::python::HeadlessPbrScene &self)
             {
@@ -180,6 +192,8 @@ inline void bind_rtxns_headless_pbr_module(py::module_ &m)
                 const auto& s = self.get_last_frame_stats();
                 py::dict d;
                 d["total_ms"] = s.total_ms;
+                d["scene_refresh_cpu_ms"] = s.scene_refresh_cpu_ms;
+                d["shadow_as_record_cpu_ms"] = s.shadow_as_record_cpu_ms;
                 d["raster_ms"] = s.raster_ms;
                 d["blas_build_ms"] = s.blas_build_ms;
                 d["tlas_build_ms"] = s.tlas_build_ms;

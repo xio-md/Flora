@@ -1,0 +1,253 @@
+{
+  "schema_version": 1,
+  "scene": "apt_0",
+  "resolution": [
+    128,
+    96
+  ],
+  "rt_shadows": true,
+  "shadow_samples": 8,
+  "batches": 200,
+  "warmup_batches": 50,
+  "trials": 3,
+  "ring_depth": 4,
+  "movable_joints_per_batch": 26,
+  "cpu_fk_reference_ms_per_pose": 0.37853476562332844,
+  "scene_summary": {
+    "unique_models": 101,
+    "render_instances": 145,
+    "articulated_instances": 6,
+    "articulated_links": 37,
+    "articulated_visuals": 31,
+    "native_node_handles": 380,
+    "native_scene_stats": {
+      "mesh_instances": 171,
+      "unique_meshes": 127,
+      "unique_geometries": 127,
+      "unique_materials": 111,
+      "unique_vertices": 326228,
+      "unique_indices": 414018,
+      "shadow_instances": 171
+    }
+  },
+  "aggregates": [
+    {
+      "num_cameras": 1,
+      "static_pose": {
+        "camera_fps": 1561.659388015698,
+        "batch_ms": 0.6403445000069041,
+        "native_pose_update_ms_per_batch": 0.0
+      },
+      "dynamic_pose": {
+        "camera_fps": 1045.0522003599672,
+        "batch_ms": 0.9568899999976566,
+        "native_pose_update_ms_per_batch": 0.023395499993057456
+      },
+      "dynamic_vs_static_fps_ratio": 0.6691934287206182,
+      "dynamic_with_cpu_fk_estimate": {
+        "batch_ms": 1.335424765620985,
+        "camera_fps": 748.8254117670123
+      }
+    },
+    {
+      "num_cameras": 4,
+      "static_pose": {
+        "camera_fps": 4111.089870519452,
+        "batch_ms": 0.9729779999906896,
+        "native_pose_update_ms_per_batch": 0.0
+      },
+      "dynamic_pose": {
+        "camera_fps": 3402.222672070345,
+        "batch_ms": 1.1757020000004559,
+        "native_pose_update_ms_per_batch": 0.020187999980407767
+      },
+      "dynamic_vs_static_fps_ratio": 0.8275719527484962,
+      "dynamic_with_cpu_fk_estimate": {
+        "batch_ms": 1.5542367656237843,
+        "camera_fps": 2573.6104617204974
+      }
+    },
+    {
+      "num_cameras": 8,
+      "static_pose": {
+        "camera_fps": 5459.7148118115865,
+        "batch_ms": 1.465277999996033,
+        "native_pose_update_ms_per_batch": 0.0
+      },
+      "dynamic_pose": {
+        "camera_fps": 4698.571927781312,
+        "batch_ms": 1.7026450000048499,
+        "native_pose_update_ms_per_batch": 0.019435500016697915
+      },
+      "dynamic_vs_static_fps_ratio": 0.8605892596471134,
+      "dynamic_with_cpu_fk_estimate": {
+        "batch_ms": 2.0811797656281783,
+        "camera_fps": 3843.973563516412
+      }
+    }
+  ],
+  "trials_data": [
+    {
+      "camera_fps": 1390.6523132850941,
+      "batch_ms": 0.7190869999976712,
+      "native_pose_update_ms_per_batch": 0.0,
+      "ring_backpressure": 0,
+      "mode": "static_pose",
+      "num_cameras": 1,
+      "trial": 1
+    },
+    {
+      "camera_fps": 919.8747682472148,
+      "batch_ms": 1.0871045000021695,
+      "native_pose_update_ms_per_batch": 0.027340000142430654,
+      "ring_backpressure": 0,
+      "mode": "dynamic_pose",
+      "num_cameras": 1,
+      "trial": 1
+    },
+    {
+      "camera_fps": 1045.0522003599672,
+      "batch_ms": 0.9568899999976566,
+      "native_pose_update_ms_per_batch": 0.023395499993057456,
+      "ring_backpressure": 0,
+      "mode": "dynamic_pose",
+      "num_cameras": 1,
+      "trial": 2
+    },
+    {
+      "camera_fps": 1577.8022161878632,
+      "batch_ms": 0.6337929999972403,
+      "native_pose_update_ms_per_batch": 0.0,
+      "ring_backpressure": 0,
+      "mode": "static_pose",
+      "num_cameras": 1,
+      "trial": 2
+    },
+    {
+      "camera_fps": 1561.659388015698,
+      "batch_ms": 0.6403445000069041,
+      "native_pose_update_ms_per_batch": 0.0,
+      "ring_backpressure": 0,
+      "mode": "static_pose",
+      "num_cameras": 1,
+      "trial": 3
+    },
+    {
+      "camera_fps": 1049.7646165142908,
+      "batch_ms": 0.9525945000132197,
+      "native_pose_update_ms_per_batch": 0.023073499869497027,
+      "ring_backpressure": 0,
+      "mode": "dynamic_pose",
+      "num_cameras": 1,
+      "trial": 3
+    },
+    {
+      "camera_fps": 4111.089870519452,
+      "batch_ms": 0.9729779999906896,
+      "native_pose_update_ms_per_batch": 0.0,
+      "ring_backpressure": 0,
+      "mode": "static_pose",
+      "num_cameras": 4,
+      "trial": 1
+    },
+    {
+      "camera_fps": 3402.222672070345,
+      "batch_ms": 1.1757020000004559,
+      "native_pose_update_ms_per_batch": 0.019669500361487735,
+      "ring_backpressure": 0,
+      "mode": "dynamic_pose",
+      "num_cameras": 4,
+      "trial": 1
+    },
+    {
+      "camera_fps": 3083.634726502347,
+      "batch_ms": 1.2971705000018119,
+      "native_pose_update_ms_per_batch": 0.024296999908983707,
+      "ring_backpressure": 0,
+      "mode": "dynamic_pose",
+      "num_cameras": 4,
+      "trial": 2
+    },
+    {
+      "camera_fps": 4032.599534701089,
+      "batch_ms": 0.9919159999844851,
+      "native_pose_update_ms_per_batch": 0.0,
+      "ring_backpressure": 0,
+      "mode": "static_pose",
+      "num_cameras": 4,
+      "trial": 2
+    },
+    {
+      "camera_fps": 4278.898611487244,
+      "batch_ms": 0.9348200000022189,
+      "native_pose_update_ms_per_batch": 0.0,
+      "ring_backpressure": 0,
+      "mode": "static_pose",
+      "num_cameras": 4,
+      "trial": 3
+    },
+    {
+      "camera_fps": 3447.9726782812386,
+      "batch_ms": 1.1601019999943674,
+      "native_pose_update_ms_per_batch": 0.020187999980407767,
+      "ring_backpressure": 0,
+      "mode": "dynamic_pose",
+      "num_cameras": 4,
+      "trial": 3
+    },
+    {
+      "camera_fps": 5323.9472143416815,
+      "batch_ms": 1.502644500014867,
+      "native_pose_update_ms_per_batch": 0.0,
+      "ring_backpressure": 0,
+      "mode": "static_pose",
+      "num_cameras": 8,
+      "trial": 1
+    },
+    {
+      "camera_fps": 4698.571927781312,
+      "batch_ms": 1.7026450000048499,
+      "native_pose_update_ms_per_batch": 0.019700000048032962,
+      "ring_backpressure": 0,
+      "mode": "dynamic_pose",
+      "num_cameras": 8,
+      "trial": 1
+    },
+    {
+      "camera_fps": 4662.173108825274,
+      "batch_ms": 1.71593799999755,
+      "native_pose_update_ms_per_batch": 0.019435500016697915,
+      "ring_backpressure": 0,
+      "mode": "dynamic_pose",
+      "num_cameras": 8,
+      "trial": 2
+    },
+    {
+      "camera_fps": 5460.450807985944,
+      "batch_ms": 1.4650805000019318,
+      "native_pose_update_ms_per_batch": 0.0,
+      "ring_backpressure": 0,
+      "mode": "static_pose",
+      "num_cameras": 8,
+      "trial": 2
+    },
+    {
+      "camera_fps": 5459.7148118115865,
+      "batch_ms": 1.465277999996033,
+      "native_pose_update_ms_per_batch": 0.0,
+      "ring_backpressure": 0,
+      "mode": "static_pose",
+      "num_cameras": 8,
+      "trial": 3
+    },
+    {
+      "camera_fps": 4773.773841256472,
+      "batch_ms": 1.675823000005039,
+      "native_pose_update_ms_per_batch": 0.01905849987451802,
+      "ring_backpressure": 0,
+      "mode": "dynamic_pose",
+      "num_cameras": 8,
+      "trial": 3
+    }
+  ]
+}

@@ -215,6 +215,7 @@ class ArticulationDesc:
     uniform_scale: float
     translation_origin: str
     auto_clamp_joint_limits: bool
+    links: tuple[str, ...]
     visuals: tuple[UrdfVisualDesc, ...]
     joints: tuple[UrdfJointDesc, ...]
 
@@ -230,6 +231,10 @@ class ArticulationDesc:
         if not math.isfinite(scale) or scale <= 0.0:
             raise ValueError("uniform_scale must be positive and finite.")
         object.__setattr__(self, "uniform_scale", scale)
+        if not self.links:
+            raise ValueError("An articulation must contain at least one link.")
+        if len(set(self.links)) != len(self.links):
+            raise ValueError("Articulation link names must be unique.")
 
 
 @dataclass(frozen=True)

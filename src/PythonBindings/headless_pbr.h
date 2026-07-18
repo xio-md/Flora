@@ -96,8 +96,16 @@ namespace rtxns::python
         void update_node_transform(
             const std::string& name,
             const std::vector<float>& matrix_values);
+        [[nodiscard]] uint32_t node_handle_count() const noexcept;
+        [[nodiscard]] std::vector<uint32_t> get_node_handles(
+            const std::vector<std::string>& names) const;
+        void update_node_transforms_batch(
+            const std::vector<uint32_t>& handles,
+            const std::vector<std::vector<float>>& matrices);
         [[nodiscard]] std::vector<float> get_node_world_transform(
             const std::string& name) const;
+        [[nodiscard]] std::vector<float> get_node_world_transform_by_handle(
+            uint32_t handle) const;
 
         struct SceneStats
         {
@@ -132,6 +140,8 @@ namespace rtxns::python
         struct FrameStats
         {
             double total_ms = 0.0;
+            double scene_refresh_cpu_ms = 0.0; // CPU time spent recording Scene::Refresh
+            double shadow_as_record_cpu_ms = 0.0; // CPU time spent preparing/recording BLAS/TLAS work
             double raster_ms = 0.0;       // forward shading (opaque + transparent)
             double blas_build_ms = 0.0;   // BLAS build (first frame only)
             double tlas_build_ms = 0.0;   // TLAS build/update

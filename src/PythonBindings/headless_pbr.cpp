@@ -305,6 +305,9 @@ namespace rtxns::python
             m_shadowAS = {};
             m_blasInputs.clear();
             m_shadowSceneResources = {};
+            m_nodeHandles.clear();
+            m_nodeHandleByName.clear();
+            m_ambiguousNodeNames.clear();
             if (m_rtShadowPass)
             {
                 m_rtShadowPass->setSceneResources(
@@ -339,6 +342,7 @@ namespace rtxns::python
 
             m_frame_index = 0;
             m_scene->RefreshSceneGraph(m_frame_index);
+            rebuild_node_handle_table();
             m_shadowSceneResources = rtxns::shadow::SceneGeometryProvider::buildShadowSceneResources(
                 device, *m_scene->GetSceneGraph());
             if (m_rtShadowPass && m_shadowSceneResources.instanceCount > 0)
@@ -505,83 +509,87 @@ namespace rtxns::python
 
         void update_node_transform(const std::string& name, const std::vector<float>& matrix_values)
         {
-            if (matrix_values.size() != 16)
-            {
-                throw std::runtime_error("update_node_transform expects a 4x4 matrix flattened into 16 floats.");
-            }
-            if (!m_scene || !m_scene->GetSceneGraph())
-            {
-                throw std::runtime_error("No scene has been loaded.");
-            }
-
-            std::shared_ptr<donut::engine::SceneGraphNode> node;
-            for (const auto& instance : m_scene->GetSceneGraph()->GetMeshInstances())
-            {
-                if (!instance)
-                {
-                    continue;
-                }
-                if (instance->GetName() == name)
-                {
-                    node = instance->GetNodeSharedPtr();
-                    break;
-                }
-                auto candidate = instance->GetNodeSharedPtr();
-                if (candidate && candidate->GetName() == name)
-                {
-                    node = std::move(candidate);
-                    break;
-                }
-            }
-
-            if (!node)
-            {
-                node = m_scene->GetSceneGraph()->FindNode(std::filesystem::path("/") / name);
-            }
-            if (!node)
-            {
-                throw std::runtime_error("Scene node not found: " + name);
-            }
-
-            dm::float4x4 donut_matrix{};
-            for (int row = 0; row < 4; ++row)
-            {
-                for (int column = 0; column < 4; ++column)
-                {
-                    donut_matrix[row][column] = matrix_values[column * 4 + row];
-                }
-            }
-
-            dm::double3 translation;
-            dm::double3 scaling;
-            dm::dquat rotation;
-            auto affine = dm::homogeneousToAffine(donut_matrix);
-            dm::decomposeAffine(dm::daffine3(affine), &translation, &rotation, &scaling);
-            node->SetTransform(&translation, &rotation, &scaling);
+            const auto handles = get_node_handles({name});
+            update_node_transforms_batch(handles, {matrix_values});
         }
 
-        [[nodiscard]] std::vector<float> get_node_world_transform(
-            const std::string& name) const
+        [[nodiscard]] uint32_t node_handle_count() const noexcept
+        {
+            return static_cast<uint32_t>(m_nodeHandles.size());
+        }
+
+        [[nodiscard]] std::vector<uint32_t> get_node_handles(
+            const std::vector<std::string>& names) const
         {
             if (!m_scene || !m_scene->GetSceneGraph())
             {
                 throw std::runtime_error("No scene has been loaded.");
             }
 
-            auto node = m_scene->GetSceneGraph()->FindNode(
-                std::filesystem::path("/") / name);
-            if (!node)
+            std::vector<uint32_t> handles;
+            handles.reserve(names.size());
+            for (const auto& name : names)
             {
-                throw std::runtime_error("Scene node not found: " + name);
+                if (m_ambiguousNodeNames.contains(name))
+                {
+                    throw std::runtime_error("Scene node name is ambiguous: " + name);
+                }
+                const auto found = m_nodeHandleByName.find(name);
+                if (found == m_nodeHandleByName.end())
+                {
+                    throw std::runtime_error("Scene node not found: " + name);
+                }
+                handles.push_back(found->second);
+            }
+            return handles;
+        }
+
+        void update_node_transforms_batch(
+            const std::vector<uint32_t>& handles,
+            const std::vector<std::vector<float>>& matrices)
+        {
+            if (handles.size() != matrices.size())
+            {
+                throw std::invalid_argument(
+                    "update_node_transforms_batch expects one 4x4 matrix per handle.");
             }
 
-            float affine_values[12]{};
-            dm::affineToColumnMajor(
-                node->GetLocalToWorldTransformFloat(), affine_values);
-            std::vector<float> result(16, 0.0f);
-            std::copy(std::begin(affine_values), std::end(affine_values), result.begin());
-            result[15] = 1.0f;
-            return result;
+            std::unordered_set<uint32_t> uniqueHandles;
+            std::vector<DecomposedNodeTransform> transforms;
+            transforms.reserve(handles.size());
+            for (size_t index = 0; index < handles.size(); ++index)
+            {
+                (void)node_from_handle(handles[index]);
+                if (!uniqueHandles.insert(handles[index]).second)
+                {
+                    throw std::invalid_argument(
+                        "update_node_transforms_batch does not accept duplicate handles.");
+                }
+                transforms.push_back(decompose_node_transform(matrices[index]));
+            }
+
+            for (size_t index = 0; index < handles.size(); ++index)
+            {
+                auto* node = node_from_handle(handles[index]);
+                const auto& transform = transforms[index];
+                node->SetTransform(
+                    &transform.translation,
+                    &transform.rotation,
+                    &transform.scaling);
+            }
+        }
+
+        [[nodiscard]] std::vector<float> get_node_world_transform(
+            const std::string& name) const
+        {
+            const auto handles = get_node_handles({name});
+            return get_node_world_transform_by_handle(handles.front());
+        }
+
+        [[nodiscard]] std::vector<float> get_node_world_transform_by_handle(
+            uint32_t handle) const
+        {
+            return world_transform_values(node_from_handle(handle));
         }
 
         [[nodiscard]] HeadlessPbrScene::SceneStats get_scene_stats() const
@@ -1533,6 +1541,8 @@ namespace rtxns::python
 
         void record_or_build_shadow_as(nvrhi::ICommandList* cmdList)
         {
+            const auto recordStart = std::chrono::high_resolution_clock::now();
+            m_lastStats.shadow_as_record_cpu_ms = 0.0;
             bool useRTShadow = m_rtShadowsEnabled && m_rtShadowPass && m_rtShadowPass->isValid();
             if (!useRTShadow) return;
 
@@ -1588,6 +1598,10 @@ namespace rtxns::python
                 m_shadowAS.instances = instances;
                 rtxns::shadow::AccelerationStructure::updateTLAS(cmdList, m_shadowAS, instances);
             }
+
+            const auto recordEnd = std::chrono::high_resolution_clock::now();
+            m_lastStats.shadow_as_record_cpu_ms =
+                std::chrono::duration<double, std::milli>(recordEnd - recordStart).count();
         }
 
         // --- Async batch API (Week 3, production single-command-list path) ---
@@ -1622,7 +1636,13 @@ namespace rtxns::python
             auto cmdList = device->createCommandList();
             cmdList->open();
 
+            m_lastStats = {};
+            m_lastStats.rt_shadows_enabled = m_rtShadowsEnabled && m_rtShadowPass && m_rtShadowPass->isValid();
+            const auto refreshStart = std::chrono::high_resolution_clock::now();
             m_scene->Refresh(cmdList, m_frame_index++);
+            const auto refreshEnd = std::chrono::high_resolution_clock::now();
+            m_lastStats.scene_refresh_cpu_ms =
+                std::chrono::duration<double, std::milli>(refreshEnd - refreshStart).count();
             if (m_scene->GetSceneGraph()->GetLights().empty())
                 ensure_default_light_attached();
             record_or_build_shadow_as(cmdList);
@@ -1760,7 +1780,12 @@ namespace rtxns::python
             cmdList->open();
 
             // --- Shared work: Scene::Refresh + ensure light (once per batch) ---
+            m_lastStats = {};
+            const auto refreshStart = std::chrono::high_resolution_clock::now();
             m_scene->Refresh(cmdList, m_frame_index++);
+            const auto refreshEnd = std::chrono::high_resolution_clock::now();
+            m_lastStats.scene_refresh_cpu_ms =
+                std::chrono::duration<double, std::milli>(refreshEnd - refreshStart).count();
             if (m_scene->GetSceneGraph()->GetLights().empty())
                 ensure_default_light_attached();
 
@@ -1828,6 +1853,124 @@ namespace rtxns::python
         }
 
     private:
+        struct DecomposedNodeTransform
+        {
+            dm::double3 translation = dm::double3::zero();
+            dm::dquat rotation = dm::dquat::identity();
+            dm::double3 scaling = dm::double3(1.0);
+        };
+
+        [[nodiscard]] static DecomposedNodeTransform decompose_node_transform(
+            const std::vector<float>& matrixValues)
+        {
+            if (matrixValues.size() != 16)
+            {
+                throw std::invalid_argument(
+                    "Node transforms must be 4x4 matrices flattened into 16 floats.");
+            }
+            if (!std::all_of(matrixValues.begin(), matrixValues.end(), [](float value)
+                {
+                    return std::isfinite(value);
+                }))
+            {
+                throw std::invalid_argument("Node transforms must contain only finite values.");
+            }
+
+            dm::float4x4 donutMatrix{};
+            for (int row = 0; row < 4; ++row)
+            {
+                for (int column = 0; column < 4; ++column)
+                {
+                    donutMatrix[row][column] = matrixValues[column * 4 + row];
+                }
+            }
+
+            DecomposedNodeTransform result;
+            const auto affine = dm::homogeneousToAffine(donutMatrix);
+            dm::decomposeAffine(
+                dm::daffine3(affine),
+                &result.translation,
+                &result.rotation,
+                &result.scaling);
+            return result;
+        }
+
+        [[nodiscard]] static std::vector<float> world_transform_values(
+            const donut::engine::SceneGraphNode* node)
+        {
+            float affineValues[12]{};
+            dm::affineToColumnMajor(node->GetLocalToWorldTransformFloat(), affineValues);
+            std::vector<float> result(16, 0.0f);
+            std::copy(std::begin(affineValues), std::end(affineValues), result.begin());
+            result[15] = 1.0f;
+            return result;
+        }
+
+        [[nodiscard]] donut::engine::SceneGraphNode* node_from_handle(uint32_t handle) const
+        {
+            if (!m_scene || !m_scene->GetSceneGraph())
+            {
+                throw std::runtime_error("No scene has been loaded.");
+            }
+            if (handle >= m_nodeHandles.size())
+            {
+                throw std::out_of_range("Scene node handle is out of range.");
+            }
+            return m_nodeHandles[handle];
+        }
+
+        void register_node_alias(const std::string& name, uint32_t handle)
+        {
+            if (name.empty() || m_ambiguousNodeNames.contains(name))
+            {
+                return;
+            }
+            const auto [found, inserted] = m_nodeHandleByName.emplace(name, handle);
+            if (!inserted && found->second != handle)
+            {
+                m_nodeHandleByName.erase(found);
+                m_ambiguousNodeNames.insert(name);
+            }
+        }
+
+        void rebuild_node_handle_table()
+        {
+            m_nodeHandles.clear();
+            m_nodeHandleByName.clear();
+            m_ambiguousNodeNames.clear();
+            if (!m_scene || !m_scene->GetSceneGraph())
+            {
+                return;
+            }
+
+            std::unordered_map<donut::engine::SceneGraphNode*, uint32_t> handleByNode;
+            donut::engine::SceneGraphWalker walker(
+                m_scene->GetSceneGraph()->GetRootNode().get());
+            while (walker)
+            {
+                auto* node = walker.Get();
+                const auto handle = static_cast<uint32_t>(m_nodeHandles.size());
+                m_nodeHandles.push_back(node);
+                handleByNode.emplace(node, handle);
+                register_node_alias(node->GetName(), handle);
+                walker.Next(true);
+            }
+
+            for (const auto& instance : m_scene->GetSceneGraph()->GetMeshInstances())
+            {
+                if (!instance)
+                {
+                    continue;
+                }
+                auto node = instance->GetNodeSharedPtr();
+                const auto found = handleByNode.find(node.get());
+                if (found != handleByNode.end())
+                {
+                    register_node_alias(instance->GetName(), found->second);
+                }
+            }
+        }
+
         void ensure_default_light_attached()
         {
             if (!m_scene || !m_scene->GetSceneGraph() || !m_scene->GetSceneGraph()->GetRootNode())
@@ -2025,6 +2168,12 @@ namespace rtxns::python
         // --- Multi-camera slots (Week 1) ---
         std::vector<RenderViewSlot> m_views;
 
+        // A3: scene-load-time node table. Handles are contiguous and remain valid
+        // until the next load_scene call.
+        std::vector<donut::engine::SceneGraphNode*> m_nodeHandles;
+        std::unordered_map<std::string, uint32_t> m_nodeHandleByName;
+        std::unordered_set<std::string> m_ambiguousNodeNames;
+
         // --- Async batch tracking ---
         struct PendingBatch {
             uint64_t token = 0;
@@ -2174,10 +2323,34 @@ namespace rtxns::python
         m_impl->update_node_transform(name, matrix_values);
     }
 
+    uint32_t HeadlessPbrScene::node_handle_count() const noexcept
+    {
+        return m_impl->node_handle_count();
+    }
+
+    std::vector<uint32_t> HeadlessPbrScene::get_node_handles(
+        const std::vector<std::string>& names) const
+    {
+        return m_impl->get_node_handles(names);
+    }
+
+    void HeadlessPbrScene::update_node_transforms_batch(
+        const std::vector<uint32_t>& handles,
+        const std::vector<std::vector<float>>& matrices)
+    {
+        m_impl->update_node_transforms_batch(handles, matrices);
+    }
+
     std::vector<float> HeadlessPbrScene::get_node_world_transform(
         const std::string& name) const
     {
         return m_impl->get_node_world_transform(name);
+    }
+
+    std::vector<float> HeadlessPbrScene::get_node_world_transform_by_handle(
+        uint32_t handle) const
+    {
+        return m_impl->get_node_world_transform_by_handle(handle);
     }
 
     HeadlessPbrScene::SceneStats HeadlessPbrScene::get_scene_stats() const

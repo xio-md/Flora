@@ -522,6 +522,7 @@ class ReplicaCADManifest:
                     auto_clamp_joint_limits=bool(
                         instance_data.get("auto_clamp_joint_limits", False)
                     ),
+                    links=template.links,
                     visuals=template.visuals,
                     joints=template.joints,
                 )
@@ -598,6 +599,7 @@ class ReplicaCADManifest:
                 "uniform_scale": instance.uniform_scale,
                 "translation_origin": instance.translation_origin,
                 "auto_clamp_joint_limits": instance.auto_clamp_joint_limits,
+                "links": instance.links,
                 "visuals": [
                     {
                         "link": visual.link_name,
