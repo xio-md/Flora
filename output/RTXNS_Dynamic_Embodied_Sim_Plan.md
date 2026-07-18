@@ -2,6 +2,8 @@
 
 > 版本：2026-07-18（Iteration A / A4 完成版）
 >
+> 当前状态：Iteration A 已完成并阶段性暂停；恢复开发时从 Week B1 的 `B>1` 独立环境与资产共享开始。
+>
 > 项目目录：`E:\cplus\Flora`
 >
 > 参考项目：`E:\cplus\SAPIEN`、`E:\cplus\Genesis`
