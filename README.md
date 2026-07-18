@@ -4,7 +4,7 @@ Flora 是一个面向具身智能仿真的无头渲染后端，基于 NVIDIA Don
 
 当前 Iteration A 已完成：Flora 可以完整装配 ReplicaCAD 场景、驱动 URDF 关节层级，并输出对齐的 Color、Depth、Normal、Instance 和 Semantic。
 
-![ReplicaCAD apt_0 多模态传感器结果](output/replicacad_a4/apt_0_multimodal_contact_sheet.png)
+![ReplicaCAD apt_0 RT 阴影与多模态传感器结果](docs/images/replicacad_apt0_rt_multimodal.png)
 
 ## 当前功能
 
@@ -31,7 +31,7 @@ Sensor 输出合约：
 
 ## 动态场景示例
 
-下面是同一个 `apt_0` 场景在关闭与打开 26 个可动关节后的结果。场景包含 stage、113 个普通对象、6 个 articulated object 和 171 个原生 mesh instance。
+下面是同一个 `apt_0` 场景在关闭与打开 26 个可动关节后的结果，均开启 Vulkan RT 直接光阴影。场景包含 stage、113 个普通对象、6 个 articulated object 和 171 个原生 mesh instance。
 
 <table>
   <tr>
@@ -39,12 +39,12 @@ Sensor 输出合约：
     <th>打开姿态</th>
   </tr>
   <tr>
-    <td><img src="output/replicacad_a4/apt_0_closed_color.png" alt="ReplicaCAD apt_0 关闭姿态" /></td>
-    <td><img src="output/replicacad_a4/apt_0_open_color.png" alt="ReplicaCAD apt_0 打开姿态" /></td>
+    <td><img src="docs/images/replicacad_apt0_rt_closed.png" alt="ReplicaCAD apt_0 RT 阴影关闭姿态" /></td>
+    <td><img src="docs/images/replicacad_apt0_rt_open.png" alt="ReplicaCAD apt_0 RT 阴影打开姿态" /></td>
   </tr>
 </table>
 
-在 RTX 3070 Laptop GPU 的阶段基线上，128×96、动态更新 26 个关节、同步 CPU readback 时，Color-only 在 C=1/4/8 达到 `1,773 / 3,671 / 4,082 cam-FPS`，五产品达到 `807 / 1,212 / 1,177 cam-FPS`。1000 帧动态五产品压力测试通过，RSS 增长 `0.63 MiB`。这些数字用于回归，不代表跨机器的绝对性能。
+在 RTX 3070 Laptop GPU 的 RT off 阶段基线上，128×96、动态更新 26 个关节、同步 CPU readback 时，Color-only 在 C=1/4/8 达到 `1,773 / 3,671 / 4,082 cam-FPS`，五产品达到 `807 / 1,212 / 1,177 cam-FPS`。1000 帧动态五产品压力测试通过，RSS 增长 `0.63 MiB`。这些数字用于回归，不代表跨机器的绝对性能。
 
 ## Python 接口
 
