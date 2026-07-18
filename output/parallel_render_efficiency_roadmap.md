@@ -1,6 +1,6 @@
 # RTXNS 并行渲染效率推进文档
 
-> 日期: 2026-07-11，更新: 2026-07-12（附实测伸缩数据）
+> 日期: 2026-07-11，更新: 2026-07-18（并行渲染代码收尾）
 > 目标: 只关注并行渲染吞吐、GPU 利用率、显存效率和调度开销。不讨论渲染质量、材质/光照效果提升。
 
 ## 0. Week 1-3 完成状态与 ReplicaCAD 实测伸缩曲线
@@ -59,7 +59,30 @@
 |------|-----------|-----------|----------|----------|
 | 两次独立受控套件的相对区间 | -1.1% ~ -11.9% | -13.7% ~ -15.7% | -1.6% ~ -13.2% | -16.9% ~ -22.6% |
 
-去除重复 submit/query 后，`mb=4` 的损失有所缩小但没有稳定转正，`mb=2` 持续退化。因此负收益方向是真实的；旧实现只是放大了其幅度。正式路径保持单 cmdList，P2 接口仅用于实验或在提交前移除。
+去除重复 submit/query 后，`mb=4` 的损失有所缩小但没有稳定转正，`mb=2` 持续退化。因此负收益方向是真实的；旧实现只是放大了其幅度。正式路径保持 single cmdList，公开的 `submit_frame_batch_ex()` 已在 2026-07-18 收尾中移除。
+
+### 0.3.2 2026-07-18 代码收尾状态
+
+- 生产异步入口只保留 `submit_frame_batch()`，内部固定录制一个 command list 并执行一次 `executeCommandList()`。
+- 删除 `submit_frame_batch_ex()` 的 C++ 声明、实现和 Python binding，防止调用方将实验接口误认为并行加速能力。
+- Ring correctness 与吞吐基准统一使用 `ReplicaCAD/stages/frl_apartment_stage.glb`，并从仓库 `bin/windows-x64` 加载当前构建模块。
+- `tools/test_ring_fix.py` 固化重复相机拒绝、camera 1→0 状态恢复、K+2、busy、乱序 read 和逐帧 hash 验证，并可用 `--rt-shadows` 覆盖 RT 路径。
+- `tools/bench_replicacad_parallel.py` 只测生产 single-cmdList 路径，逐 case 输出进度并原子写入 JSON。
+
+正式收尾基线使用 `frl_apartment_stage.glb`、1280×720、ring K=4、CPU RGBA8 端到端端点。每个 case 使用 30 个测量 batch、5 次 sync/async 交错 trial 并报告中位数，启动后先用最大相机数预热 20 个 batch。它用于验证收尾后无回归，因场景、分辨率和帧数不同，不与 0.2 节的历史吞吐直接比较。
+
+| RT shadow | C | sync cam-FPS | async e2e cam-FPS | busy |
+|---|---:|---:|---:|---:|
+| OFF | 1 | 293.7 | 450.7 | 0 |
+| OFF | 4 | 311.3 | 400.9 | 0 |
+| OFF | 8 | 312.0 | 426.6 | 0 |
+| ON，8 samples | 1 | 221.5 | 397.6 | 0 |
+| ON，8 samples | 4 | 212.2 | 395.2 | 0 |
+| ON，8 samples | 8 | 209.9 | 369.8 | 0 |
+
+RT 的 async 端到端吞吐相对无 RT 在 C=1/4/8 分别下降约 11.8% / 1.4% / 13.3%；C=4 的差异较小，说明 GPU 执行与 CPU readback 流水会掩盖部分 pass 成本。后续性能结论必须同时报告 C、分辨率、RT 配置、统计方式和输出端点，不能只摘取单个峰值。
+
+正确性结果：重复 camera index 会在提交前被拒绝；`render_frame(1)` 后回到 `render_frame(0)` 的输出与 camera 0 参考 hash 一致。K=4 时前 4 帧提交成功，第 5/6 帧正确返回 busy，4 帧按 token 逆序 read 后 hash 全部匹配；上述测试在无 RT/RT 下均通过。额外对无 RT/RT 各 4 个相机逐一比较 `render_frame()` 与 `submit/read` 输出，8 张图像的 SHA-256 全部一致，排除了 EventQuery 提前返回或旧帧复用造成“假快”。1280×720 的 Flora 无 RT/RT 示例图在移除 P2 API 前后 SHA-256 也完全一致。
 
 ### 0.4 对后续规划的启示（修订）
 
@@ -325,7 +348,7 @@ Frame k-1:
 | Week 1 | 基准复现 + 多相机资源模型 | 当前并行效率低，但缺少稳定对照；renderer 内部仍是单相机结构 | 得到可复现 baseline，完成 `CameraDesc` / `RenderViewSlot` / 多相机 API 骨架 | 瓶颈量化、接口打通、兼容旧 API |
 | Week 2 | 同步版 `render_frame_batch()` | Python 层 N 次调用、N 次 command submit/wait；BLAS/TLAS 不能按 batch 共享表达 | 单进程单 device 批量渲染多相机，scene/texture/BLAS 只加载一次 | 首个吞吐收益、显存收益、共享 AS |
 | Week 3 | 异步 readback + 帧流水 | 每 batch 末尾仍 `waitForIdle()`，GPU/CPU 无跨帧重叠 | `submit_frame_batch()` / `read_frame_batch(token)`，staging ring，去掉稳态全局 wait | GPU 利用率提升、异步流水、延迟可控 |
-| Week 4 | 资源池 + 调度器 + 总结报告 | batch size 增大后显存/readback/不同分辨率成为新瓶颈 | render target/readback pool、micro-batch scheduler、完整性能报告 | 稳定扩展、显存预算、最终对比 |
+| Week 4 | 资源池 + 分组策略 + 总结报告 | batch size 增大后显存/readback/不同分辨率成为新瓶颈 | render target/readback pool、按分辨率/显存分组的 single-cmdList batch、完整性能报告 | 稳定扩展、显存预算、最终对比 |
 
 建议每周汇报固定包含五项:
 
@@ -577,7 +600,7 @@ images0 = scene.read_frame_batch(token0)
    - 按 `(width, height, format)` 复用
 2. 实现 batch scheduler:
    - 同分辨率 camera 合批
-   - 不同分辨率 camera 自动拆 micro-batch
+   - 不同分辨率 camera 在上层拆成独立 single-cmdList batch
    - 根据显存预算限制最大 batch size
 3. 完善 benchmark:
    - 多进程 POC
@@ -606,7 +629,7 @@ images0 = scene.read_frame_batch(token0)
 | 成果 | 说明 | 汇报价值 |
 |------|------|----------|
 | 资源池 | 降低重复 target/staging 分配 | 解释稳定性和显存控制 |
-| micro-batch scheduler | 大规模 camera 自动分批 | 说明方案可扩展到训练/数据采集 |
+| batch grouping | 大规模 camera 按分辨率/显存预算分组，每组仍为 single cmdList | 说明方案可扩展到训练/数据采集 |
 | 四周性能总表 | baseline vs batch vs async vs scheduler | 最适合汇报的核心成果 |
 | 后续路线 | timeline semaphore、多 GPU、CUDA/torch interop | 形成下一阶段研究计划 |
 
@@ -826,7 +849,7 @@ std::vector<std::vector<uint8_t>> render_frame_batch(const std::vector<uint32_t>
 
 - `RenderTargetPool`: 按分辨率和格式复用 color/depth/shadow/composite target。
 - `ReadbackPool`: 按 `(width, height, format, lag)` 复用 staging texture。
-- `BatchScheduler`: 根据显存预算把 camera_indices 分成多个 micro-batch。
+- `BatchScheduler`: 根据显存预算把 camera_indices 分成多个独立 batch，每个 batch 固定使用 single cmdList。
 
 策略:
 
@@ -837,7 +860,7 @@ std::vector<std::vector<uint8_t>> render_frame_batch(const std::vector<uint32_t>
 验收:
 
 - N=8 camera 不出现显存尖峰。
-- 不同分辨率 camera 可以渲染，但会被拆成多个 micro-batch。
+- 不同分辨率 camera 可以渲染，但会在上层拆成多个独立 single-cmdList batch。
 
 ### 5.13 远期探索: 多队列 timeline semaphore（非 P2 延续）
 

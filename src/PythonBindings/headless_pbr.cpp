@@ -1337,9 +1337,10 @@ namespace rtxns::python
             if (camera_index >= m_views.size())
                 throw std::out_of_range("Camera index out of range.");
 
+            auto& slot = m_views[camera_index];
+
             // Always sync legacy members from this camera's slot.
             {
-                auto& slot = m_views[camera_index];
                 m_width = slot.width; m_height = slot.height;
                 m_z_near = slot.z_near; m_z_far = slot.z_far;
                 m_framebuffer_factory = slot.framebufferFactory;
@@ -1504,25 +1505,20 @@ namespace rtxns::python
             }
         }
 
-        // --- Async batch API (Week 3 + P2 micro-batch experimental) ---
+        // --- Async batch API (Week 3, production single-command-list path) ---
 
-        uint64_t submit_frame_batch_impl(const std::vector<uint32_t>& indices, uint32_t micro_batch_size = 0)
+        uint64_t submit_frame_batch_impl(const std::vector<uint32_t>& indices)
         {
             if (indices.empty()) return 0;
 
-            // Use micro_batch_size=0 as "all in one cmdList" (default).
-            // When micro_batch_size > 0, cameras are split into groups of that size,
-            // each recorded into its own command list.  All cmdLists are executed on
-            // the same Graphics queue so the GPU still serialises camera raster work;
-            // this experiment measures whether smaller cmdLists reduce driver overhead.
-
-            uint32_t mb = (micro_batch_size == 0)
-                ? static_cast<uint32_t>(indices.size())
-                : micro_batch_size;
-            uint32_t num_groups = (static_cast<uint32_t>(indices.size()) + mb - 1) / mb;
-
-            for (auto idx : indices)
-                if (idx >= m_views.size()) throw std::out_of_range("Camera index out of range.");
+            for (size_t i = 0; i < indices.size(); ++i)
+            {
+                const auto idx = indices[i];
+                if (idx >= m_views.size())
+                    throw std::out_of_range("Camera index out of range.");
+                if (std::find(indices.begin(), indices.begin() + i, idx) != indices.begin() + i)
+                    throw std::invalid_argument("Camera indices in a batch must be unique.");
+            }
             if (!m_scene) throw std::runtime_error("No scene loaded.");
             auto* device = m_context->device();
 
@@ -1538,41 +1534,20 @@ namespace rtxns::python
                 m_rtShadowPass->initialize(device, m_context->shader_factory().get(), 0, 0);
             }
 
-            // Record one cmdList per group, then submit the whole ordered sequence
-            // in one queue submission. This isolates command-list granularity from
-            // repeated submit/query overhead.
-            std::vector<nvrhi::CommandListHandle> commandLists;
-            commandLists.reserve(num_groups);
+            auto cmdList = device->createCommandList();
+            cmdList->open();
 
-            for (uint32_t g = 0; g < num_groups; ++g) {
-                uint32_t start = g * mb;
-                uint32_t end = std::min(start + mb, static_cast<uint32_t>(indices.size()));
+            m_scene->Refresh(cmdList, m_frame_index++);
+            if (m_scene->GetSceneGraph()->GetLights().empty())
+                ensure_default_light_attached();
+            record_or_build_shadow_as(cmdList);
 
-                auto cmdList = device->createCommandList();
-                cmdList->open();
+            for (uint32_t i = 0; i < static_cast<uint32_t>(indices.size()); ++i)
+                sync_and_record_view(cmdList, indices[i], i == 0, true /*use_ring*/);
 
-                if (g == 0) {
-                    m_scene->Refresh(cmdList, m_frame_index++);
-                    if (m_scene->GetSceneGraph()->GetLights().empty())
-                        ensure_default_light_attached();
-                    record_or_build_shadow_as(cmdList);
-                }
+            cmdList->close();
 
-                for (uint32_t i = start; i < end; ++i)
-                    sync_and_record_view(cmdList, indices[i],
-                        (g == 0 && i == start), true /*use_ring*/);
-
-                cmdList->close();
-                commandLists.push_back(cmdList);
-            }
-
-            std::vector<nvrhi::ICommandList*> commandListPointers;
-            commandListPointers.reserve(commandLists.size());
-            for (const auto& commandList : commandLists)
-                commandListPointers.push_back(commandList.Get());
-
-            uint64_t composite_token = device->executeCommandLists(
-                commandListPointers.data(), commandListPointers.size());
+            uint64_t composite_token = device->executeCommandList(cmdList);
             auto query = device->createEventQuery();
             device->setEventQuery(query, nvrhi::CommandQueue::Graphics);
 
@@ -1727,21 +1702,19 @@ namespace rtxns::python
             if (camera_index >= m_views.size())
                 throw std::out_of_range("Camera index out of range.");
 
-            if (camera_index != 0) {
-                auto& slot = m_views[camera_index];
-                m_width = slot.width; m_height = slot.height;
-                m_z_near = slot.z_near; m_z_far = slot.z_far;
-                m_framebuffer_factory = slot.framebufferFactory;
-                m_color_target = slot.colorTarget; m_depth_target = slot.depthTarget;
-                m_readback_target = slot.readbackTarget;
-                m_shadowTarget = slot.shadowTarget; m_shadowBlurTemp = slot.shadowBlurTemp;
-                m_compositeOutput = slot.compositeOutput; m_litColorSRV = slot.litColorSRV;
-                m_view = slot.view;
-                const auto pos = to_float3(slot.desc.position);
-                const auto tgt = to_float3(slot.desc.target);
-                const auto cam_up = normalize_or_throw(to_float3(slot.desc.up), "up");
-                m_camera.LookAt(pos, tgt, cam_up);
-            }
+            auto& slot = m_views[camera_index];
+            m_width = slot.width; m_height = slot.height;
+            m_z_near = slot.z_near; m_z_far = slot.z_far;
+            m_framebuffer_factory = slot.framebufferFactory;
+            m_color_target = slot.colorTarget; m_depth_target = slot.depthTarget;
+            m_readback_target = slot.readbackTarget;
+            m_shadowTarget = slot.shadowTarget; m_shadowBlurTemp = slot.shadowBlurTemp;
+            m_compositeOutput = slot.compositeOutput; m_litColorSRV = slot.litColorSRV;
+            m_view = slot.view;
+            const auto pos = to_float3(slot.desc.position);
+            const auto tgt = to_float3(slot.desc.target);
+            const auto cam_up = normalize_or_throw(to_float3(slot.desc.up), "up");
+            m_camera.LookAt(pos, tgt, cam_up);
             return render_frame();
         }
 
@@ -2050,18 +2023,17 @@ namespace rtxns::python
     std::vector<std::vector<uint8_t>> HeadlessPbrScene::render_frame_batch(const std::vector<uint32_t>& camera_indices)
     {
         // Week 3: sync convenience = submit + wait + read
+        if (camera_indices.empty())
+            return {};
         uint64_t token = m_impl->submit_frame_batch_impl(camera_indices);
+        if (token == 0)
+            throw std::runtime_error("Readback ring is busy.");
         return m_impl->read_frame_batch_impl(token);
     }
 
     uint64_t HeadlessPbrScene::submit_frame_batch(const std::vector<uint32_t>& camera_indices)
     {
         return m_impl->submit_frame_batch_impl(camera_indices);
-    }
-
-    uint64_t HeadlessPbrScene::submit_frame_batch_ex(const std::vector<uint32_t>& camera_indices, uint32_t micro_batch_size)
-    {
-        return m_impl->submit_frame_batch_impl(camera_indices, micro_batch_size);
     }
 
     bool HeadlessPbrScene::is_batch_ready(uint64_t token) const

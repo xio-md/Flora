@@ -6,6 +6,11 @@ build/*
 /.vs
 /*.zip
 /local-toolchain
+/ReplicaCAD/
+/tools/*.pyd
+/build_*.txt
+/ninja.exe
+/output/replicacad_compare/
 external/slang/windows-x64/release/slang-stdlib.bin
 /external/dx12-agility-sdk
 /external/nvapi

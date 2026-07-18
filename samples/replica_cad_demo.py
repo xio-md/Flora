@@ -9,6 +9,18 @@ from pathlib import Path
 import numpy as np
 
 
+def _resolve_scene_path(repo_root: Path) -> Path:
+    candidates = (
+        repo_root / "data" / "replica_cad" / "frl_apartment_stage.glb",
+        repo_root / "ReplicaCAD" / "stages" / "frl_apartment_stage.glb",
+    )
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    searched = "\n".join(f"  - {path}" for path in candidates)
+    raise FileNotFoundError(f"ReplicaCAD stage GLB was not found. Searched:\n{searched}")
+
+
 def main() -> int:
     repo_root = Path(__file__).resolve().parents[1]
     module_dir = repo_root / "bin" / "windows-x64"
@@ -16,8 +28,8 @@ def main() -> int:
 
     import DonutRenderPyNative as rr
 
-    scene_path = repo_root / "data" / "replica_cad" / "frl_apartment_stage.glb"
-    output_dir = repo_root / "data" / "replica_cad"
+    scene_path = _resolve_scene_path(repo_root)
+    output_dir = repo_root / "output" / "replicacad_compare"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     rr.init()

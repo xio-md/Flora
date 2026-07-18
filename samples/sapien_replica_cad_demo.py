@@ -16,7 +16,20 @@ from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
 import numpy as np
+
+
+def _resolve_scene_path(repo_root: Path) -> Path:
+    candidates = (
+        repo_root / "data" / "replica_cad" / "frl_apartment_stage.glb",
+        repo_root / "ReplicaCAD" / "stages" / "frl_apartment_stage.glb",
+    )
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    searched = "\n".join(f"  - {path}" for path in candidates)
+    raise FileNotFoundError(f"ReplicaCAD stage GLB was not found. Searched:\n{searched}")
 
 
 def main() -> int:
@@ -29,6 +42,12 @@ def main() -> int:
     # with the same HDR display mapping as --gi.  It is an A/B control for
     # separating display exposure from indirect-light transport.
     reference_tonemap = gi_mode or "--reference-tonemap" in sys.argv
+    reference_exposure = 0.60
+    for arg in sys.argv[1:]:
+        if arg.startswith("--reference-exposure="):
+            reference_exposure = float(arg.split("=", 1)[1])
+    if reference_exposure <= 0:
+        raise ValueError("--reference-exposure must be positive")
     if gi_mode:
         # Must be configured before creating the renderer/scene.  The RT
         # camera adds multi-bounce path tracing to the *same* direct lighting
@@ -41,11 +60,8 @@ def main() -> int:
         sapien.render.set_ray_tracing_denoiser("none")
 
     # Keep the original GLB so embedded material textures are preserved.
-    glb_path = os.path.join(
-        os.path.dirname(__file__), "..", "data", "replica_cad",
-        "frl_apartment_stage.glb"
-    )
-    glb_path = os.path.abspath(glb_path)
+    repo_root = Path(__file__).resolve().parents[1]
+    glb_path = str(_resolve_scene_path(repo_root))
 
     # Flora camera params (Y-up, used EXACTLY as-is in SAPIEN)
     # derrickliao begin: 相机参数与 Flora 完全一致 (Y-up)
@@ -135,7 +151,7 @@ def main() -> int:
             # This is a display transform, not a light-intensity change.
             # Apply it to both --gi and --reference-tonemap so the resulting
             # A/B isolates indirect transport from presentation brightness.
-            rgb_linear *= 0.60                      # common reference exposure
+            rgb_linear *= reference_exposure       # common reference exposure
             # Match Flora's shadow_composite_cs.hlsl: Hejl-Burgess-Dawson
             # filmic curve.  Keeping this operator and exposure identical in
             # all four reference images prevents display mapping from being
@@ -148,26 +164,31 @@ def main() -> int:
     else:
         rgb = rgba[:, :, :3]
 
-    out_dir = os.path.join(os.path.dirname(__file__), "..", "data", "replica_cad")
-    out_dir = os.path.abspath(out_dir)
-    os.makedirs(out_dir, exist_ok=True)
+    out_dir = repo_root / "output" / "replicacad_compare"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    exposure_suffix = ""
+    if abs(reference_exposure - 0.60) > 1.0e-6:
+        exposure_suffix = "_exposure_" + f"{reference_exposure:.3f}".rstrip("0").rstrip(".").replace(".", "p")
 
     if gi_mode:
-        output_name = "maniskill_rt_gi_output.png"
+        output_name = f"maniskill_rt_gi_output{exposure_suffix}.png"
     elif reference_tonemap:
-        output_name = "maniskill_direct_reference_tonemap_output.png"
+        output_name = f"maniskill_direct_reference_tonemap_output{exposure_suffix}.png"
     else:
         output_name = "maniskill_demo_output.png"
-    png_path = os.path.join(out_dir, output_name)
-    Image.fromarray(rgb, "RGB").save(png_path)
-    print("  Saved: {} ({:.1f} KB)".format(png_path, os.path.getsize(png_path) / 1024))
+    png_path = out_dir / output_name
+    Image.fromarray(rgb, "RGB").save(str(png_path))
+    if reference_tonemap:
+        print("  Reference exposure: {:.3f}".format(reference_exposure))
+    print("  Saved: {} ({:.1f} KB)".format(png_path, png_path.stat().st_size / 1024))
 
     # Compare only the raster render with Flora.  The RT image keeps the same
     # direct light but intentionally includes indirect light, so a pixel
     # difference quantifies GI rather than camera or asset mismatch.
-    flora_path = os.path.join(out_dir, "demo_output.png")
-    if not gi_mode and os.path.exists(flora_path):
-        flora_img = np.array(Image.open(flora_path)).astype(float)
+    flora_path = out_dir / "demo_output.png"
+    if not gi_mode and flora_path.exists():
+        flora_img = np.array(Image.open(str(flora_path))).astype(float)
         diff = np.abs(flora_img - rgb.astype(float))
         match_pct = 100 * (diff.mean(axis=2) < 30).sum() / (flora_img.shape[0] * flora_img.shape[1])
         print("\n=== Comparison with Flora ===")

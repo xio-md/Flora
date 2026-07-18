@@ -1,0 +1,208 @@
+{
+  "metadata": {
+    "commit": "aa05ad216b96ff274d2b3fcb5c35bc0131360fc3",
+    "working_tree_dirty": true,
+    "platform": "Windows-10-10.0.19045-SP0",
+    "python": "3.13.7",
+    "scene": "ReplicaCAD/stages/frl_apartment_stage.glb",
+    "scene_kind": "stage_glb",
+    "resolution": [
+      1280,
+      720
+    ],
+    "frames": 30,
+    "warmup": 5,
+    "global_warmup": 20,
+    "trials": 5,
+    "ring_depth": 4,
+    "rt_shadows": true,
+    "submission": "single_cmdlist",
+    "endpoint": "cpu_rgba8_e2e"
+  },
+  "results": [
+    {
+      "camera_count": 1,
+      "sync": {
+        "batch_ms": 4.51413000003716,
+        "cam_fps": 221.52662860656827,
+        "samples": [
+          {
+            "batch_ms": 4.727049999989201,
+            "cam_fps": 211.54842872452895
+          },
+          {
+            "batch_ms": 4.3364866667009965,
+            "cam_fps": 230.6014238850998
+          },
+          {
+            "batch_ms": 4.51127000002695,
+            "cam_fps": 221.66706936051847
+          },
+          {
+            "batch_ms": 4.51413000003716,
+            "cam_fps": 221.52662860656827
+          },
+          {
+            "batch_ms": 4.7949633333094726,
+            "cam_fps": 208.55216828317273
+          }
+        ]
+      },
+      "async_e2e": {
+        "batch_ms": 2.515240000017608,
+        "cam_fps": 397.5763744187431,
+        "samples": [
+          {
+            "batch_ms": 2.680990000044403,
+            "cam_fps": 372.99654231587505,
+            "busy_count": 0
+          },
+          {
+            "batch_ms": 2.390993333331911,
+            "cam_fps": 418.2362142375672,
+            "busy_count": 0
+          },
+          {
+            "batch_ms": 2.3104600000200057,
+            "cam_fps": 432.81424477867665,
+            "busy_count": 0
+          },
+          {
+            "batch_ms": 2.793560000039482,
+            "cam_fps": 357.9661793503153,
+            "busy_count": 0
+          },
+          {
+            "batch_ms": 2.515240000017608,
+            "cam_fps": 397.5763744187431,
+            "busy_count": 0
+          }
+        ],
+        "busy_count": 0
+      }
+    },
+    {
+      "camera_count": 4,
+      "sync": {
+        "batch_ms": 18.851859999995213,
+        "cam_fps": 212.18065485320895,
+        "samples": [
+          {
+            "batch_ms": 18.63135333333048,
+            "cam_fps": 214.6918652894751
+          },
+          {
+            "batch_ms": 18.851859999995213,
+            "cam_fps": 212.18065485320895
+          },
+          {
+            "batch_ms": 19.85629000003731,
+            "cam_fps": 201.44750101819042
+          },
+          {
+            "batch_ms": 18.412883333318558,
+            "cam_fps": 217.2391975547851
+          },
+          {
+            "batch_ms": 18.940939999993134,
+            "cam_fps": 211.18276072895273
+          }
+        ]
+      },
+      "async_e2e": {
+        "batch_ms": 10.121130000031068,
+        "cam_fps": 395.2127875037394,
+        "samples": [
+          {
+            "batch_ms": 10.111253333343484,
+            "cam_fps": 395.59883113692314,
+            "busy_count": 0
+          },
+          {
+            "batch_ms": 11.692993333357057,
+            "cam_fps": 342.0852031608574,
+            "busy_count": 0
+          },
+          {
+            "batch_ms": 10.080953333332824,
+            "cam_fps": 396.78786993031105,
+            "busy_count": 0
+          },
+          {
+            "batch_ms": 10.269423333375016,
+            "cam_fps": 389.5058047709687,
+            "busy_count": 0
+          },
+          {
+            "batch_ms": 10.121130000031068,
+            "cam_fps": 395.2127875037394,
+            "busy_count": 0
+          }
+        ],
+        "busy_count": 0
+      }
+    },
+    {
+      "camera_count": 8,
+      "sync": {
+        "batch_ms": 38.11007000003883,
+        "cam_fps": 209.918270944972,
+        "samples": [
+          {
+            "batch_ms": 37.83864333333137,
+            "cam_fps": 211.42407061283157
+          },
+          {
+            "batch_ms": 37.77876666669423,
+            "cam_fps": 211.75916277470225
+          },
+          {
+            "batch_ms": 38.50267333333856,
+            "cam_fps": 207.7777802787784
+          },
+          {
+            "batch_ms": 38.11007000003883,
+            "cam_fps": 209.918270944972
+          },
+          {
+            "batch_ms": 42.015250000016145,
+            "cam_fps": 190.4070545812991
+          }
+        ]
+      },
+      "async_e2e": {
+        "batch_ms": 21.633873333363834,
+        "cam_fps": 369.79046131616076,
+        "samples": [
+          {
+            "batch_ms": 21.002573333316832,
+            "cam_fps": 380.9057048885257,
+            "busy_count": 0
+          },
+          {
+            "batch_ms": 21.633873333363834,
+            "cam_fps": 369.79046131616076,
+            "busy_count": 0
+          },
+          {
+            "batch_ms": 23.544723333361617,
+            "cam_fps": 339.7788917172973,
+            "busy_count": 0
+          },
+          {
+            "batch_ms": 21.136396666649187,
+            "cam_fps": 378.4940321745137,
+            "busy_count": 0
+          },
+          {
+            "batch_ms": 22.152859999975288,
+            "cam_fps": 361.1271862869591,
+            "busy_count": 0
+          }
+        ],
+        "busy_count": 0
+      }
+    }
+  ],
+  "reference_image": "output/bench_parallel/replicacad_single_cmdlist_rt_720p_reference.png"
+}

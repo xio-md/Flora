@@ -237,7 +237,7 @@ uint32_t ringWriteIdx;
 |------|------|------|----------|
 | P0 | `EventQuery` 放在 `executeCommandList` 前，导致 `is_batch_ready()` 可能提前返回 | `executeCommandList()` 后再 `setEventQuery()` | 已修复 |
 | P1 | readback ring 读回槽位依赖当前 `ringWriteIdx`，连续提交后可能读错 | `PendingBatch` 保存每个 camera 的 `ringIndices` | 已修复读回定位 |
-| P1 | batch 路径中 camera 0 legacy 状态可能沿用前一个 camera | `sync_and_record_view()` 对所有 camera index 无条件同步 slot 状态 | batch 主路径已修复 |
+| P1 | camera 0 legacy 状态可能沿用前一个 camera | batch 的 `sync_and_record_view()` 与旧 `render_frame_for_index()` 均无条件同步 slot 状态 | 已修复并通过 1→0 hash 验证 |
 | P1 | async 路径首帧不构建 AS，RT shadow 可能直接 fallback | 抽出 `record_or_build_shadow_as()`，同步和异步 batch 共用 | 已修复 |
 | P2 | OMM bake/cache 未并入 batch AS 构建 | 保留 TODO，计划通过预 bake cache 接入 | 后续处理 |
 | P0 | K 从 4 切换到 8 时仅修改字段、未重建 staging ring，导致越界后 GPU 卡死 | pending token 时拒绝切换；空闲后重建每个 slot 的 ring | 已修复并验证 |
@@ -311,19 +311,21 @@ is_batch_ready: False
 [4] Pipelined submit/read       OK
 [5] Shared AS build path        OK
 [6] Release build               OK
+[7] Duplicate camera rejection  OK
+[8] Legacy camera 1 -> 0 restore OK
+[9] Empty sync batch            OK
 ```
 
 构建验证:
 
 ```text
-cmake --build E:\cplus\RTXNS\build --config Release
+cmake --build E:\cplus\Flora\build-flora --config Release --target DonutRenderPyNative
 ```
 
 已通过，输出:
 
 ```text
-DonutRenderPyNative.pyd
-RtxRenderPy.pyd
+E:\cplus\Flora\bin\windows-x64\DonutRenderPyNative.pyd
 ```
 
 ### 4. 阶段性收益汇总
@@ -393,11 +395,26 @@ HeadlessPbrScene::render_frame_batch(const std::vector<uint32_t>& camera_indices
 
 ### 2. P2 微批次实验接口的收口
 
-`submit_frame_batch_ex()` 仅用于完成本次多 cmdList 实验。正式数据采集和训练路径继续使用 `submit_frame_batch()` 的单 cmdList 主路径；提交前应将 P2 接口移除、转为内部 benchmark 开关，或明确标记为 experimental，避免调用方把它误认为并行加速接口。
+`submit_frame_batch_ex()` 仅用于完成本次多 cmdList 实验。2026-07-18 代码收尾已将它从 C++ API 和 Python binding 中移除；正式数据采集和训练路径只保留 `submit_frame_batch()` 的 single-cmdList 主路径，避免调用方把实验接口误认为并行加速能力。
+
+收尾回归统一改用 `ReplicaCAD/stages/frl_apartment_stage.glb`。正式基线为 1280×720、ring K=4、CPU RGBA8 端到端端点；每个 case 测量 30 个 batch，执行 5 次 sync/async 交错 trial 并报告中位数，测试前以最大相机数预热 20 个 batch。
+
+| RT shadow | C | sync cam-FPS | async e2e cam-FPS | busy |
+|---|---:|---:|---:|---:|
+| OFF | 1 | 293.7 | 450.7 | 0 |
+| OFF | 4 | 311.3 | 400.9 | 0 |
+| OFF | 8 | 312.0 | 426.6 | 0 |
+| ON，8 samples | 1 | 221.5 | 397.6 | 0 |
+| ON，8 samples | 4 | 212.2 | 395.2 | 0 |
+| ON，8 samples | 8 | 209.9 | 369.8 | 0 |
+
+RT 的 async 端到端吞吐相对无 RT 在 C=1/4/8 分别下降约 11.8% / 1.4% / 13.3%。C=4 的差异较小，说明 GPU 执行与 CPU readback 流水会掩盖部分 pass 成本；后续汇报必须完整标注相机数、分辨率、RT 配置、统计方式和输出端点。
+
+Ring correctness 在无 RT/RT 两种模式重新验证了 K+2 场景：重复 camera index 在提交前被拒绝；`render_frame(1)` 后回到 camera 0 的输出与参考 hash 一致；4 帧入队后第 5/6 帧返回 busy，随后按 token 逆序读取 4 帧，所有 hash 均匹配。另有无 RT/RT 各 4 个相机的同步输出与异步输出逐相机 SHA-256 全部一致，排除了 EventQuery 提前返回和旧帧复用。1280×720 的 Flora 无 RT/RT ReplicaCAD 示例图在收尾前后 SHA-256 完全一致。
 
 ### 3. 旧 `render_frame(index)` 的状态同步收口
 
-batch 主路径中的 `sync_and_record_view()` 已对任意 camera index 无条件同步 slot 状态。后续建议把旧 `render_frame_for_index()` 也改为调用同一个 `sync_legacy_from_slot()` helper，避免 `render_frame(1)` 后再 `render_frame(0)` 时 legacy 状态残留。
+batch 主路径中的 `sync_and_record_view()` 已对任意 camera index 无条件同步 slot 状态；旧 `render_frame_for_index()` 也改为无条件从目标 slot 恢复 legacy 状态。无 RT/RT 下的 `render_frame(1)`→`render_frame(0)` 回切 hash 均与 camera 0 参考输出一致，该项已收口。
 
 ### 4. OMM 与 async batch 的集成
 
@@ -426,7 +443,7 @@ src/PythonBindings/headless_pbr.h
   + render_frame(index) / render_frame_batch(indices)
   + submit_frame_batch / is_batch_ready / read_frame_batch
   + set_readback_ring_depth / readback_ring_depth
-  + submit_frame_batch_ex（仅 P2 实验，非生产主路径）
+  - submit_frame_batch_ex（P2 实验结束后已移除）
 
 src/PythonBindings/headless_pbr.cpp
   + RenderViewSlot / m_views
@@ -462,13 +479,10 @@ tools/bench_batch_large.py
   N=1/2/4 多规模吞吐对比
 
 tools/test_ring_fix.py
-  K+2 submit、busy 返回与逐帧 hash 正确性验证
+  重复相机拒绝、camera 1→0 回切、K+2、busy、逆序 read 与无 RT/RT hash 验证
 
 tools/bench_replicacad_parallel.py
-  ReplicaCAD 端到端吞吐、K=2/4/8 深度选择与 ring 重配置验证
-
-tools/test_mb.py
-  同一 Graphics queue 下单 cmdList 与多 cmdList 的交错中位数 A/B 实验
+  生产 single-cmdList 路径的 ReplicaCAD 端到端吞吐基准，原子写入 JSON
 ```
 
 ### 展示材料

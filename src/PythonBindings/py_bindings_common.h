@@ -132,10 +132,6 @@ inline void bind_rtxns_headless_pbr_module(py::module_ &m)
         .def("submit_frame_batch",
             &rtxns::python::HeadlessPbrScene::submit_frame_batch,
             py::arg("camera_indices"))
-        .def("submit_frame_batch_ex",
-            &rtxns::python::HeadlessPbrScene::submit_frame_batch_ex,
-            py::arg("camera_indices"),
-            py::arg("micro_batch_size"))
         .def("is_batch_ready",
             &rtxns::python::HeadlessPbrScene::is_batch_ready,
             py::arg("token"))

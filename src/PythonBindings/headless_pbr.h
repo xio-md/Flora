@@ -83,7 +83,6 @@ namespace rtxns::python
 
         // --- Async batch API (Week 3) ---
         [[nodiscard]] uint64_t submit_frame_batch(const std::vector<uint32_t>& camera_indices);
-        [[nodiscard]] uint64_t submit_frame_batch_ex(const std::vector<uint32_t>& camera_indices, uint32_t micro_batch_size);
         [[nodiscard]] bool is_batch_ready(uint64_t token) const;
         [[nodiscard]] std::vector<std::vector<uint8_t>> read_frame_batch(uint64_t token);
 
