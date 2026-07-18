@@ -1,0 +1,68 @@
+{
+  "scene": "apt_0",
+  "resolution": [
+    1280,
+    720
+  ],
+  "rt_shadows": true,
+  "camera": {
+    "position": [
+      3.5,
+      2.0,
+      3.5
+    ],
+    "target": [
+      0.0,
+      1.0,
+      0.0
+    ],
+    "vertical_fov_degrees": 60.0
+  },
+  "lighting": {
+    "ambient_top": [
+      0.03,
+      0.04,
+      0.06
+    ],
+    "ambient_bottom": [
+      0.01,
+      0.01,
+      0.01
+    ],
+    "direction": [
+      -0.4,
+      -1.0,
+      -0.6
+    ],
+    "irradiance": 2.0
+  },
+  "compile_ms": 576.9256999992649,
+  "load_ms": 337.57499999774154,
+  "first_frame_ms": 44.10450000068522,
+  "mean_frame_ms": 5.848939999123104,
+  "camera_fps": 170.9711503537263,
+  "unique_models": 81,
+  "render_instances": 114,
+  "ordinary_objects": 113,
+  "omitted_articulated_instances": 6,
+  "native_scene_stats": {
+    "mesh_instances": 136,
+    "unique_meshes": 103,
+    "unique_geometries": 103,
+    "unique_materials": 90,
+    "unique_vertices": 313457,
+    "unique_indices": 392739,
+    "shadow_instances": 136
+  },
+  "validated_transforms": 20,
+  "max_transform_error": 2.2359017748385668e-07,
+  "vram_before_mb": 1669,
+  "vram_loaded_mb": 2227,
+  "vram_load_delta_mb": 558,
+  "rgb_mean": 74.58234664351852,
+  "rgb_std": 48.99113388516717,
+  "nonblack_fraction": 0.8204210069444444,
+  "scene_path": "output/replicacad_complete/apt_0.donut_scene.json",
+  "image_path": "output/replicacad_complete/apt_0_complete_rt.png",
+  "determinism_digest": "d86f18a52b5f8b8437d970732b18d1e8d45de34527371130950e34e305c4ff71"
+}

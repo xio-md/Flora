@@ -78,6 +78,13 @@ class ReplicaCADManifest:
             raise FileNotFoundError(f"ReplicaCAD dataset config not found: {self.dataset_config_path}")
         self.dataset_root = self.dataset_config_path.parent
         self._config = _read_json(self.dataset_config_path)
+        scene_registry = self._config.get("scene_instances", {})
+        scene_defaults = (
+            scene_registry.get("default_attributes", {})
+            if isinstance(scene_registry, dict)
+            else {}
+        )
+        self._scene_defaults = scene_defaults if isinstance(scene_defaults, dict) else {}
         self._warnings: list[ManifestWarning] = []
         self._scene_cache: dict[str, SceneDesc] = {}
 
@@ -414,6 +421,12 @@ class ReplicaCADManifest:
 
         data = _read_json(scene_path)
         warnings: list[ManifestWarning] = []
+        scene_translation_origin = str(
+            data.get(
+                "translation_origin",
+                self._scene_defaults.get("translation_origin", "UNKNOWN"),
+            )
+        )
         stage_data = data.get("stage_instance")
         if not isinstance(stage_data, dict):
             raise ReplicaCADParseError(f"Scene has no stage_instance object: {scene_path}")
@@ -432,7 +445,9 @@ class ReplicaCADManifest:
             motion_type="STATIC",
             semantic_id=-1,
             instance_id=0,
-            translation_origin=str(stage_data.get("translation_origin", "ASSET_LOCAL")),
+            translation_origin=str(
+                stage_data.get("translation_origin", scene_translation_origin)
+            ),
         )
 
         objects: list[InstanceDesc] = []
@@ -463,7 +478,9 @@ class ReplicaCADManifest:
                     com=template.com,
                     mass=template.mass,
                     translation_origin=str(
-                        instance_data.get("translation_origin", "ASSET_LOCAL")
+                        instance_data.get(
+                            "translation_origin", scene_translation_origin
+                        )
                     ),
                 )
             )
@@ -498,7 +515,9 @@ class ReplicaCADManifest:
                     fixed_base=bool(instance_data.get("fixed_base", False)),
                     uniform_scale=float(instance_data.get("uniform_scale", 1.0)),
                     translation_origin=str(
-                        instance_data.get("translation_origin", "ASSET_LOCAL")
+                        instance_data.get(
+                            "translation_origin", scene_translation_origin
+                        )
                     ),
                     auto_clamp_joint_limits=bool(
                         instance_data.get("auto_clamp_joint_limits", False)

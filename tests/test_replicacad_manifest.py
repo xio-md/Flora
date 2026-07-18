@@ -58,6 +58,7 @@ class ReplicaCADManifestTests(unittest.TestCase):
                 "door2",
             ],
         )
+        self.assertTrue(all(instance.translation_origin == "UNKNOWN" for instance in scene.objects))
 
     def test_scene_aliases_share_cached_description(self) -> None:
         by_handle = self.manifest.parse_scene("apt_0")
@@ -112,7 +113,7 @@ class ReplicaCADManifestTests(unittest.TestCase):
         self.assertEqual(first["determinism_digest"], second["determinism_digest"])
         self.assertEqual(
             first["determinism_digest"],
-            "85952eb72e072f834a603eb89b8602ef94ee2e58e905a5ccb3013ead5b754882",
+            "d03d00dc2f16d8eaaac47dddad5653a23e7fc06dedd3b3b44d94a590b0c107e3",
         )
         self.assertEqual(first["summary"], second["summary"])
         self.assertEqual(first["summary"]["missing_required_visual_assets"], 0)

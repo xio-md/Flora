@@ -40,6 +40,13 @@ from .objects import (
     WavePathIntegrator,
 )
 from .runtime import Scene, create_scene, destroy, init
+from .donut_scene_compiler import (
+    CompiledDonutScene,
+    CompiledInstanceDesc,
+    DonutSceneArtifact,
+    compile_donut_scene,
+    compose_instance_asset_matrix,
+)
 from .replicacad import (
     ReplicaCADManifest,
     ReplicaCADParseError,
@@ -65,9 +72,12 @@ __all__ = [
     "ArticulationDesc",
     "ArticulationTemplateDesc",
     "ColorTexture",
+    "CompiledDonutScene",
+    "CompiledInstanceDesc",
     "DeformableShape",
     "DisneySurface",
     "DonutRenderError",
+    "DonutSceneArtifact",
     "Environment",
     "Film",
     "Filter",
@@ -111,6 +121,8 @@ __all__ = [
     "WavePathIntegrator",
     "ObjectTemplateDesc",
     "compose_transform_matrix",
+    "compile_donut_scene",
+    "compose_instance_asset_matrix",
     "create_scene",
     "destroy",
     "init",

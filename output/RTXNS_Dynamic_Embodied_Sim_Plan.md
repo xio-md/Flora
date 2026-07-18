@@ -774,6 +774,8 @@ class SceneDesc:
 
 ### Week A2：完整可视场景装配与 AssetCache
 
+> 完成状态（2026-07-18）：已完成普通对象装配。`apt_0` 的 stage + 113 个普通对象已编译为 114 个顶层实例，81 个唯一 GLB 在 Donut model/graph 中去重；91/91 场景完成同进程原生加载、渲染和变换校验。`apt_0` 在 128×96、正确方向光、RT 8 samples、N=8 时达到 6,325 cam-FPS（stage-first/complete-first 共 6 trials 的顺序平衡中位数）。A2 同时修复异步 command buffer GC 和 RT binding set 重建问题，stage/普通对象场景各 10,000 batch 并包含一次热重载的压力测试通过。视觉完整场景仍依赖 A3 加载 `kitchen_counter` 等 6 个 URDF，否则其上的普通物体会看似悬空。
+
 #### A2.1 目标
 
 将 `SceneDesc` 编译成 Donut SceneGraph，完整显示 stage、普通家具和材质，并建立稳定 handle 和资产去重。
@@ -817,6 +819,38 @@ tests/
 - 从“单 stage GLB”推进到“完整家具场景”。
 - 展示 `apt_0`、一个 `v3_sc*_staging_*` 的全景和实例统计。
 - 汇报 AssetCache 前后加载时间和显存；不要求预设提升比例，但必须提供对照数据。
+
+#### A2.6 实际交付与结果（2026-07-18）
+
+实际实现采用 Donut 原生 `models + graph` 作为第一版场景内 AssetCache：同一路径 GLB 只进入一次 model 表，多个实例共享底层 Mesh/Material/Texture。没有新增一套与 Donut 重复的 C++ mesh cache；跨 scene/跨 environment 的持久 GPU cache 保留到 Week B1。
+
+关键交付文件：
+
+```text
+python/donut_render_py/donut_scene_compiler.py
+tests/test_replicacad_assembly.py
+tools/render_replicacad_complete_scene.py
+tools/smoke_replicacad_complete_scenes.py
+tools/bench_replicacad_complete_parallel.py
+docs/RTXNS_ReplicaCAD_Assembly_Week_A2_Report.md
+output/replicacad_complete/
+```
+
+验收结果：
+
+| 指标 | A2 结果 |
+|---|---:|
+| `apt_0` 顶层实例 / 唯一 GLB | 114 / 81 |
+| `apt_0` 原生 mesh / unique mesh / material | 136 / 103 / 90 |
+| 91 场景 smoke | 91 / 91 |
+| 普通对象原生覆盖 | 2,293 / 2,293 |
+| 全量 transform 最大误差 | `8.41e-8` |
+| 平均 / 最大加载 | 291.67 / 399.69 ms |
+| 640×480 Raster / RT 8-sample | 812.5 / 412.0 FPS |
+| 128×96 RT N=1/2/4/8 | 1,830 / 3,239 / 4,973 / 6,325 cam-FPS |
+| 异步长稳态 | stage 10,000 + 热重载 + complete 10,000 batch 通过 |
+
+完整结果和复现命令见 `docs/RTXNS_ReplicaCAD_Assembly_Week_A2_Report.md`。A2 收尾后，下一开发项切换到 Week A3；540 个 articulated instance 不计入 A2 静态普通对象完成率。
 
 ### Week A3：URDF 可视层级和动态位姿
 
@@ -1220,8 +1254,9 @@ B=8, C=1, ColorRGBA8, 1280x720, tensor_ready = 742 cam-FPS
 
 1. Gate 0 已完成：single-cmdList 基线、测试元数据和无 RT/RT correctness 已冻结。
 2. 不再继续 micro-batch/multi-cmdList 优化。
-3. Week A1 已完成：`ReplicaCADManifest/SceneDesc`、91 场景覆盖率、路径解析和 transform tests 已交付，未修改 `headless_pbr.cpp`。
-4. 下一项开发进入 Week A2：实现 `SceneDesc -> Donut SceneGraph` 和 `AssetCache`，先让完整 `apt_0` 的 113 个家具可见。
+3. Week A1 已完成：`ReplicaCADManifest/SceneDesc`、91 场景覆盖率、路径解析和 transform tests 已交付。
+4. Week A2 已完成：`SceneDesc -> Donut SceneGraph`、场景内资产去重、91 场景原生 smoke 和完整场景并行基线已交付。
+5. 下一项开发进入 Week A3：实现 URDF link/visual 层级、稳定 link handle 和 CPU `PoseBatch` reference API，先让 `apt_0` 的 6 个 articulated object 可见并可由外部位姿驱动。
 
 ### Iteration A 完成定义
 

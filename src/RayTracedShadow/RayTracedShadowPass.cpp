@@ -16,6 +16,7 @@ bool RayTracedShadowPass::initialize(
     uint32_t height)
 {
     m_device = device;
+    m_bindingCache = std::make_unique<donut::engine::BindingCache>(device);
 
     // ---- Create shaders from compiled SPIR-V blobs ----
 #if DONUT_WITH_VULKAN
@@ -153,6 +154,12 @@ void RayTracedShadowPass::setSceneResources(
     nvrhi::IDevice* device,
     const ShadowSceneResources& resources)
 {
+    if (m_bindingCache)
+        m_bindingCache->Clear();
+    m_shadowBindingSet.Reset();
+    m_compositeBindingSet.Reset();
+    m_blurBindingSet.Reset();
+
     // Create dummy 16-byte buffers for slots that must be bound
     auto createDummyBuf = [device](const char* name) {
         nvrhi::BufferDesc d;
@@ -223,7 +230,8 @@ void RayTracedShadowPass::renderShadow(
     }
     setDesc.addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(263, m_shadowConstantBuffer));
 
-    m_shadowBindingSet = m_device->createBindingSet(setDesc, m_shadowBindingLayout);
+    m_shadowBindingSet = m_bindingCache->GetOrCreateBindingSet(
+        setDesc, m_shadowBindingLayout);
     if (!m_shadowBindingSet)
     {
         nvrhi::Color clearWhite(1.0f, 1.0f, 1.0f, 1.0f);
@@ -272,7 +280,8 @@ void RayTracedShadowPass::compositeShadow(
     setDesc.addItem(
         nvrhi::BindingSetItem::Texture_UAV(2, output));
 
-    m_compositeBindingSet = m_device->createBindingSet(setDesc, m_compositeBindingLayout);
+    m_compositeBindingSet = m_bindingCache->GetOrCreateBindingSet(
+        setDesc, m_compositeBindingLayout);
     if (!m_compositeBindingSet)
         return;
 
@@ -313,7 +322,8 @@ void RayTracedShadowPass::blurShadow(
     setDesc.addItem(nvrhi::BindingSetItem::Texture_UAV(0, shadowOutput));
     setDesc.addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(263, m_shadowConstantBuffer));
 
-    m_blurBindingSet = m_device->createBindingSet(setDesc, m_blurBindingLayout);
+    m_blurBindingSet = m_bindingCache->GetOrCreateBindingSet(
+        setDesc, m_blurBindingLayout);
     if (!m_blurBindingSet)
         return;
 

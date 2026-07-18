@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <unordered_map>
+#include <unordered_set>
 #include <fstream>
 #include <cstdio>
 #include <chrono>
@@ -294,12 +295,25 @@ namespace rtxns::python
 
             auto* device = m_context->device();
             device->waitForIdle();
+            device->runGarbageCollection();
 
+            m_forward_pass->ResetBindingCache();
+            for (auto& view : m_views)
+            {
+                view.frameBindingScratch.clear();
+            }
+            m_shadowAS = {};
+            m_blasInputs.clear();
+            m_shadowSceneResources = {};
+            if (m_rtShadowPass)
+            {
+                m_rtShadowPass->setSceneResources(
+                    device, rtxns::shadow::ShadowSceneResources{});
+            }
             m_scene.reset();
             m_default_light.reset();
             m_texture_cache->Reset();
             m_ommCpuCache.clear();
-            device->runGarbageCollection();
 
             m_scene = std::make_unique<Scene>(
                 device,
@@ -544,6 +558,77 @@ namespace rtxns::python
             auto affine = dm::homogeneousToAffine(donut_matrix);
             dm::decomposeAffine(dm::daffine3(affine), &translation, &rotation, &scaling);
             node->SetTransform(&translation, &rotation, &scaling);
+        }
+
+        [[nodiscard]] std::vector<float> get_node_world_transform(
+            const std::string& name) const
+        {
+            if (!m_scene || !m_scene->GetSceneGraph())
+            {
+                throw std::runtime_error("No scene has been loaded.");
+            }
+
+            auto node = m_scene->GetSceneGraph()->FindNode(
+                std::filesystem::path("/") / name);
+            if (!node)
+            {
+                throw std::runtime_error("Scene node not found: " + name);
+            }
+
+            float affine_values[12]{};
+            dm::affineToColumnMajor(
+                node->GetLocalToWorldTransformFloat(), affine_values);
+            std::vector<float> result(16, 0.0f);
+            std::copy(std::begin(affine_values), std::end(affine_values), result.begin());
+            result[15] = 1.0f;
+            return result;
+        }
+
+        [[nodiscard]] HeadlessPbrScene::SceneStats get_scene_stats() const
+        {
+            HeadlessPbrScene::SceneStats stats;
+            if (!m_scene || !m_scene->GetSceneGraph())
+            {
+                return stats;
+            }
+
+            const auto& instances = m_scene->GetSceneGraph()->GetMeshInstances();
+            stats.mesh_instances = static_cast<uint32_t>(instances.size());
+            stats.shadow_instances = m_shadowSceneResources.instanceCount;
+
+            std::unordered_set<const donut::engine::MeshInfo*> meshes;
+            std::unordered_set<const donut::engine::MeshGeometry*> geometries;
+            std::unordered_set<const donut::engine::Material*> materials;
+            for (const auto& instance : instances)
+            {
+                if (!instance || !instance->GetMesh())
+                {
+                    continue;
+                }
+                const auto& mesh = instance->GetMesh();
+                if (meshes.insert(mesh.get()).second)
+                {
+                    stats.unique_vertices += mesh->totalVertices;
+                    stats.unique_indices += mesh->totalIndices;
+                }
+                for (const auto& geometry : mesh->geometries)
+                {
+                    if (!geometry)
+                    {
+                        continue;
+                    }
+                    geometries.insert(geometry.get());
+                    if (geometry->material)
+                    {
+                        materials.insert(geometry->material.get());
+                    }
+                }
+            }
+
+            stats.unique_meshes = static_cast<uint32_t>(meshes.size());
+            stats.unique_geometries = static_cast<uint32_t>(geometries.size());
+            stats.unique_materials = static_cast<uint32_t>(materials.size());
+            return stats;
         }
 
         // --- Ring depth configuration (P0) ---
@@ -1554,6 +1639,7 @@ namespace rtxns::python
             PendingBatch pending;
             pending.token = composite_token;
             pending.cameraIndices = indices;
+            pending.commandList = cmdList;
             pending.query = query;
 
             for (auto idx : indices) {
@@ -1599,6 +1685,10 @@ namespace rtxns::python
                 device->waitEventQuery(found.query);
                 device->resetEventQuery(found.query);
             }
+            // NVRHI keeps submitted command buffers in an in-flight list until
+            // the application explicitly collects them. The completed query
+            // makes it safe to retire those buffers before the next batch.
+            device->runGarbageCollection();
             m_pendingBatches.erase(it);
 
             // Readback using per-camera ring indices saved at submit time
@@ -1940,6 +2030,7 @@ namespace rtxns::python
             uint64_t token = 0;
             std::vector<uint32_t> cameraIndices;
             std::vector<uint32_t> ringIndices;
+            nvrhi::CommandListHandle commandList;
             nvrhi::EventQueryHandle query;
         };
         std::vector<PendingBatch> m_pendingBatches;
@@ -2081,6 +2172,17 @@ namespace rtxns::python
         const std::vector<float>& matrix_values)
     {
         m_impl->update_node_transform(name, matrix_values);
+    }
+
+    std::vector<float> HeadlessPbrScene::get_node_world_transform(
+        const std::string& name) const
+    {
+        return m_impl->get_node_world_transform(name);
+    }
+
+    HeadlessPbrScene::SceneStats HeadlessPbrScene::get_scene_stats() const
+    {
+        return m_impl->get_scene_stats();
     }
 
     void HeadlessPbrScene::set_readback_ring_depth(uint32_t depth)

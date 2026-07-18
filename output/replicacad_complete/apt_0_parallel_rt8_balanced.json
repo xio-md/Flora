@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "scene": "apt_0",
+  "resolution": [128, 96],
+  "rt_shadows": true,
+  "shadow_samples": 8,
+  "ring_depth": 4,
+  "lighting": {
+    "ambient_top": [0.03, 0.04, 0.06],
+    "ambient_bottom": [0.01, 0.01, 0.01],
+    "direction": [-0.4, -1.0, -0.6],
+    "irradiance": 2.0
+  },
+  "batches_per_trial": 1000,
+  "warmup_batches_per_case": 500,
+  "trials_per_order": 3,
+  "effective_trials": 6,
+  "methodology": "Merge trial samples from stage_first and complete_first runs, then take the median.",
+  "source_reports": [
+    "apt_0_parallel_rt8_stage_first.json",
+    "apt_0_parallel_rt8_complete_first.json"
+  ],
+  "complete_scene": {
+    "unique_models": 81,
+    "render_instances": 114,
+    "ordinary_objects": 113,
+    "omitted_articulated_instances": 6,
+    "native_mesh_instances": 136
+  },
+  "results": [
+    {
+      "num_cameras": 1,
+      "stage_camera_fps": 2185.20404972163,
+      "complete_camera_fps": 1830.33443560311,
+      "complete_vs_stage_ratio": 0.837603442953655,
+      "stage_batch_ms": 0.457633799998803,
+      "complete_batch_ms": 0.546349799999007
+    },
+    {
+      "num_cameras": 2,
+      "stage_camera_fps": 3740.61763634359,
+      "complete_camera_fps": 3239.49196451036,
+      "complete_vs_stage_ratio": 0.866031302701371,
+      "stage_batch_ms": 0.534964649999893,
+      "complete_batch_ms": 0.617380849998881
+    },
+    {
+      "num_cameras": 4,
+      "stage_camera_fps": 6256.7172296457,
+      "complete_camera_fps": 4972.6652241859,
+      "complete_vs_stage_ratio": 0.794772249035696,
+      "stage_batch_ms": 0.639314350000859,
+      "complete_batch_ms": 0.804397699999754
+    },
+    {
+      "num_cameras": 8,
+      "stage_camera_fps": 8660.13914979454,
+      "complete_camera_fps": 6325.18291430647,
+      "complete_vs_stage_ratio": 0.730378900950631,
+      "stage_batch_ms": 0.923772800002553,
+      "complete_batch_ms": 1.26479884999935
+    }
+  ],
+  "load_reference": {
+    "source": "stage_first run",
+    "stage_load_ms": 62.7686999978323,
+    "complete_load_ms": 308.3502999979828,
+    "stage_resident_delta_mb": 82,
+    "complete_resident_delta_mb": 477
+  },
+  "stress_validation": {
+    "stage_batches": 10000,
+    "complete_batches": 10000,
+    "stage_camera_fps": 8699.1,
+    "complete_camera_fps": 6303.4,
+    "hot_reload_between_modes": true,
+    "exit_code": 0,
+    "report": "apt_0_parallel_rt8_stress.json"
+  }
+}

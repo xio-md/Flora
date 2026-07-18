@@ -2,6 +2,7 @@
 
 #include "ShadowTypes.h"
 #include <nvrhi/nvrhi.h>
+#include <donut/engine/BindingCache.h>
 #include <donut/engine/ShaderFactory.h>
 #include <memory>
 #include <vector>
@@ -67,6 +68,7 @@ public:
 
 private:
     nvrhi::DeviceHandle                m_device;
+    std::unique_ptr<donut::engine::BindingCache> m_bindingCache;
     nvrhi::ShaderHandle                m_rayQueryShader;
     nvrhi::ShaderHandle                m_compositeShader;
     nvrhi::ShaderHandle                m_blurShader;
