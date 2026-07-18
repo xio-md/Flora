@@ -44,6 +44,23 @@ inline void bind_rtxns_headless_pbr_module(py::module_ &m)
             &rtxns::python::HeadlessPbrScene::update_node_transform,
             py::arg("name"),
             py::arg("matrix_values"))
+        .def("get_node_world_transform",
+            &rtxns::python::HeadlessPbrScene::get_node_world_transform,
+            py::arg("name"))
+        .def("get_scene_stats",
+            [](const rtxns::python::HeadlessPbrScene &self)
+            {
+                const auto stats = self.get_scene_stats();
+                py::dict result;
+                result["mesh_instances"] = stats.mesh_instances;
+                result["unique_meshes"] = stats.unique_meshes;
+                result["unique_geometries"] = stats.unique_geometries;
+                result["unique_materials"] = stats.unique_materials;
+                result["unique_vertices"] = stats.unique_vertices;
+                result["unique_indices"] = stats.unique_indices;
+                result["shadow_instances"] = stats.shadow_instances;
+                return result;
+            })
         .def("enable_rt_shadows",
             &rtxns::python::HeadlessPbrScene::enable_rt_shadows,
             py::arg("enable"))

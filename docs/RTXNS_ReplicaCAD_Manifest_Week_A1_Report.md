@@ -168,7 +168,7 @@ PASS: ReplicaCAD manifest acceptance checks passed
 报告确定性摘要：
 
 ```text
-85952eb72e072f834a603eb89b8602ef94ee2e58e905a5ccb3013ead5b754882
+d03d00dc2f16d8eaaac47dddad5653a23e7fc06dedd3b3b44d94a590b0c107e3
 ```
 
 摘要覆盖场景路径、灯光与 navmesh 引用、实例位姿与属性、visual/collision 资源、URDF visual 和 joint；路径统一转换为相对数据集根目录的 POSIX 形式，避免两台机器的盘符差异影响复现。外部同名 `scene_instance.json` 也不会覆盖 dataset registry 中规范场景的缓存。

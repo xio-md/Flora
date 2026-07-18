@@ -15,6 +15,8 @@ Matrix4 = tuple[
     tuple[float, float, float, float],
 ]
 
+_TRANSLATION_ORIGINS = {"ASSET_LOCAL", "COM", "UNKNOWN"}
+
 
 def _float_tuple(values: Sequence[float], length: int, name: str) -> tuple[float, ...]:
     result = tuple(float(value) for value in values)
@@ -36,6 +38,14 @@ def normalize_quaternion_wxyz(values: Sequence[float]) -> QuatWxyz:
     if norm <= 1.0e-12:
         raise ValueError("rotation_wxyz must be non-zero.")
     return w / norm, x / norm, y / norm, z / norm
+
+
+def normalize_translation_origin(value: object) -> str:
+    origin = str(value).strip().upper()
+    if origin not in _TRANSLATION_ORIGINS:
+        expected = ", ".join(sorted(_TRANSLATION_ORIGINS))
+        raise ValueError(f"translation_origin must be one of {expected}, got {value!r}.")
+    return origin
 
 
 def compose_transform_matrix(
@@ -186,6 +196,11 @@ class InstanceDesc:
     def __post_init__(self) -> None:
         object.__setattr__(self, "motion_type", str(self.motion_type).upper())
         object.__setattr__(self, "com", vector3(self.com, "center of mass"))
+        object.__setattr__(
+            self,
+            "translation_origin",
+            normalize_translation_origin(self.translation_origin),
+        )
 
 
 @dataclass(frozen=True)
@@ -206,6 +221,11 @@ class ArticulationDesc:
     def __post_init__(self) -> None:
         object.__setattr__(self, "urdf_path", Path(self.urdf_path).resolve())
         object.__setattr__(self, "motion_type", str(self.motion_type).upper())
+        object.__setattr__(
+            self,
+            "translation_origin",
+            normalize_translation_origin(self.translation_origin),
+        )
         scale = float(self.uniform_scale)
         if not math.isfinite(scale) or scale <= 0.0:
             raise ValueError("uniform_scale must be positive and finite.")

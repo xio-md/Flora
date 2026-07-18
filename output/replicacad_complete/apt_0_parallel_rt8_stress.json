@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "mode": "both",
+  "scene": "apt_0",
+  "resolution": [
+    128,
+    96
+  ],
+  "rt_shadows": true,
+  "shadow_samples": 8,
+  "lighting": {
+    "ambient_top": [
+      0.03,
+      0.04,
+      0.06
+    ],
+    "ambient_bottom": [
+      0.01,
+      0.01,
+      0.01
+    ],
+    "direction": [
+      -0.4,
+      -1.0,
+      -0.6
+    ],
+    "irradiance": 2.0
+  },
+  "batches": 10000,
+  "trials": 1,
+  "order": "stage_first",
+  "warmup_batches": 0,
+  "ring_depth": 4,
+  "complete_scene": {
+    "unique_models": 81,
+    "render_instances": 114,
+    "ordinary_objects": 113,
+    "omitted_articulated_instances": 6
+  },
+  "aggregates": [
+    {
+      "mode": "stage_only",
+      "num_cameras": 8,
+      "camera_fps": 8699.126056438467,
+      "camera_fps_mean": 8699.126056438467,
+      "camera_fps_std": 0.0,
+      "batch_ms": 0.919632609999826,
+      "load_ms": 63.36060000103316,
+      "resident_delta_mb": 82,
+      "native_scene_stats": {
+        "mesh_instances": 20,
+        "unique_meshes": 20,
+        "unique_geometries": 20,
+        "unique_materials": 10,
+        "unique_vertices": 77027,
+        "unique_indices": 111849,
+        "shadow_instances": 20
+      },
+      "trials": [
+        {
+          "mode": "stage_only",
+          "num_cameras": 8,
+          "camera_fps": 8699.126056438467,
+          "batch_ms": 0.919632609999826,
+          "ring_backpressure": 0,
+          "load_ms": 63.36060000103316,
+          "baseline_vram_mb": 1718,
+          "resident_vram_mb": 1800,
+          "resident_delta_mb": 82,
+          "native_scene_stats": {
+            "mesh_instances": 20,
+            "unique_meshes": 20,
+            "unique_geometries": 20,
+            "unique_materials": 10,
+            "unique_vertices": 77027,
+            "unique_indices": 111849,
+            "shadow_instances": 20
+          }
+        }
+      ]
+    },
+    {
+      "mode": "complete_static",
+      "num_cameras": 8,
+      "camera_fps": 6303.384744264641,
+      "camera_fps_mean": 6303.384744264641,
+      "camera_fps_std": 0.0,
+      "batch_ms": 1.2691593999999895,
+      "load_ms": 344.1065000006347,
+      "resident_delta_mb": 477,
+      "native_scene_stats": {
+        "mesh_instances": 136,
+        "unique_meshes": 103,
+        "unique_geometries": 103,
+        "unique_materials": 90,
+        "unique_vertices": 313457,
+        "unique_indices": 392739,
+        "shadow_instances": 136
+      },
+      "trials": [
+        {
+          "mode": "complete_static",
+          "num_cameras": 8,
+          "camera_fps": 6303.384744264641,
+          "batch_ms": 1.2691593999999895,
+          "ring_backpressure": 0,
+          "load_ms": 344.1065000006347,
+          "baseline_vram_mb": 1800,
+          "resident_vram_mb": 2277,
+          "resident_delta_mb": 477,
+          "native_scene_stats": {
+            "mesh_instances": 136,
+            "unique_meshes": 103,
+            "unique_geometries": 103,
+            "unique_materials": 90,
+            "unique_vertices": 313457,
+            "unique_indices": 392739,
+            "shadow_instances": 136
+          }
+        }
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "num_cameras": 8,
+      "stage_camera_fps": 8699.126056438467,
+      "complete_camera_fps": 6303.384744264641,
+      "complete_vs_stage_ratio": 0.7245997705251471
+    }
+  ]
+}

@@ -96,6 +96,21 @@ namespace rtxns::python
         void update_node_transform(
             const std::string& name,
             const std::vector<float>& matrix_values);
+        [[nodiscard]] std::vector<float> get_node_world_transform(
+            const std::string& name) const;
+
+        struct SceneStats
+        {
+            uint32_t mesh_instances = 0;
+            uint32_t unique_meshes = 0;
+            uint32_t unique_geometries = 0;
+            uint32_t unique_materials = 0;
+            uint64_t unique_vertices = 0;
+            uint64_t unique_indices = 0;
+            uint32_t shadow_instances = 0;
+        };
+
+        [[nodiscard]] SceneStats get_scene_stats() const;
 
         // --- Ring depth configuration (P0: occupancy protection) ---
         void set_readback_ring_depth(uint32_t depth);
