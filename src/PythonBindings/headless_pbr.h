@@ -107,6 +107,37 @@ namespace rtxns::python
         [[nodiscard]] std::vector<float> get_node_world_transform_by_handle(
             uint32_t handle) const;
 
+        void set_node_labels(
+            const std::vector<std::string>& node_names,
+            const std::vector<uint32_t>& instance_ids,
+            const std::vector<uint32_t>& semantic_ids);
+
+        enum SensorProduct : uint32_t
+        {
+            SensorColor = 1u << 0u,
+            SensorDepth = 1u << 1u,
+            SensorNormal = 1u << 2u,
+            SensorInstance = 1u << 3u,
+            SensorSemantic = 1u << 4u,
+            SensorAll = SensorColor | SensorDepth | SensorNormal |
+                SensorInstance | SensorSemantic,
+        };
+
+        struct SensorFrame
+        {
+            uint32_t width = 0;
+            uint32_t height = 0;
+            std::vector<uint8_t> color_rgba8;
+            std::vector<float> depth_linear;
+            std::vector<float> normal_world;
+            std::vector<uint32_t> instance;
+            std::vector<uint32_t> semantic;
+        };
+
+        [[nodiscard]] std::vector<SensorFrame> render_sensor_batch(
+            const std::vector<uint32_t>& camera_indices,
+            uint32_t product_mask = SensorAll);
+
         struct SceneStats
         {
             uint32_t mesh_instances = 0;
@@ -142,6 +173,7 @@ namespace rtxns::python
             double total_ms = 0.0;
             double scene_refresh_cpu_ms = 0.0; // CPU time spent recording Scene::Refresh
             double shadow_as_record_cpu_ms = 0.0; // CPU time spent preparing/recording BLAS/TLAS work
+            double sensor_record_cpu_ms = 0.0; // CPU time spent recording requested sensor passes
             double raster_ms = 0.0;       // forward shading (opaque + transparent)
             double blas_build_ms = 0.0;   // BLAS build (first frame only)
             double tlas_build_ms = 0.0;   // TLAS build/update

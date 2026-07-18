@@ -1,0 +1,434 @@
+{
+  "schema_version": 1,
+  "scene": "apt_0",
+  "resolution": [
+    128,
+    96
+  ],
+  "rt_shadows": false,
+  "shadow_samples": 8,
+  "dynamic_pose": true,
+  "movable_joints_per_batch": 26,
+  "cpu_fk_reference_ms_per_pose": 0.36163125000143737,
+  "batches": 200,
+  "warmup_batches": 30,
+  "trials": 3,
+  "scene_stats": {
+    "mesh_instances": 171,
+    "unique_meshes": 127,
+    "unique_geometries": 127,
+    "unique_materials": 111,
+    "unique_vertices": 326228,
+    "unique_indices": 414018,
+    "shadow_instances": 171
+  },
+  "aggregates": [
+    {
+      "num_cameras": 1,
+      "color_only": {
+        "camera_fps": 1773.4379779959072,
+        "batch_ms": 0.5638765000003332,
+        "pose_write_ms_per_batch": 0.01913549982418772,
+        "scene_refresh_record_ms_per_batch": 0.14401349999999996,
+        "sensor_record_ms_per_batch": 0.0,
+        "payload_bytes_per_camera": 49152.0
+      },
+      "all_products": {
+        "camera_fps": 807.0637447289471,
+        "batch_ms": 1.23905949998516,
+        "pose_write_ms_per_batch": 0.021216499899310293,
+        "scene_refresh_record_ms_per_batch": 0.1730949999999999,
+        "sensor_record_ms_per_batch": 0.3274230000000001,
+        "payload_bytes_per_camera": 344064.0
+      },
+      "all_vs_color_fps_ratio": 0.455084279654921,
+      "all_products_extra_batch_ms": 0.6751829999848269
+    },
+    {
+      "num_cameras": 4,
+      "color_only": {
+        "camera_fps": 3671.188193806187,
+        "batch_ms": 1.0895655000058468,
+        "pose_write_ms_per_batch": 0.021042999851488275,
+        "scene_refresh_record_ms_per_batch": 0.14454950000000003,
+        "sensor_record_ms_per_batch": 0.0,
+        "payload_bytes_per_camera": 49152.0
+      },
+      "all_products": {
+        "camera_fps": 1211.7611721702085,
+        "batch_ms": 3.3009805000074266,
+        "pose_write_ms_per_batch": 0.02861749984731432,
+        "scene_refresh_record_ms_per_batch": 0.22628849999999992,
+        "sensor_record_ms_per_batch": 1.0296875,
+        "payload_bytes_per_camera": 344064.0
+      },
+      "all_vs_color_fps_ratio": 0.33007329186082607,
+      "all_products_extra_batch_ms": 2.2114150000015798
+    },
+    {
+      "num_cameras": 8,
+      "color_only": {
+        "camera_fps": 4081.8867296886865,
+        "batch_ms": 1.9598779999978433,
+        "pose_write_ms_per_batch": 0.022610500072914874,
+        "scene_refresh_record_ms_per_batch": 0.15068649999999997,
+        "sensor_record_ms_per_batch": 0.0,
+        "payload_bytes_per_camera": 49152.0
+      },
+      "all_products": {
+        "camera_fps": 1176.680314197797,
+        "batch_ms": 6.798787999996421,
+        "pose_write_ms_per_batch": 0.03406749989153468,
+        "scene_refresh_record_ms_per_batch": 0.2273304999999999,
+        "sensor_record_ms_per_batch": 2.0107049999999993,
+        "payload_bytes_per_camera": 344064.0
+      },
+      "all_vs_color_fps_ratio": 0.28826873260335156,
+      "all_products_extra_batch_ms": 4.838909999998577
+    }
+  ],
+  "trials_data": [
+    {
+      "batches": 200,
+      "camera_frames": 200,
+      "elapsed_ms": 112.77530000006664,
+      "batch_ms": 0.5638765000003332,
+      "camera_fps": 1773.4379779959072,
+      "pose_write_ms_per_batch": 0.01913549982418772,
+      "scene_refresh_record_ms_per_batch": 0.1468855,
+      "sensor_record_ms_per_batch": 0.0,
+      "payload_bytes_per_camera": 49152,
+      "mode": "color_only",
+      "products": [
+        "color"
+      ],
+      "num_cameras": 1,
+      "trial": 1
+    },
+    {
+      "batches": 200,
+      "camera_frames": 200,
+      "elapsed_ms": 283.23770000133663,
+      "batch_ms": 1.4161885000066832,
+      "camera_fps": 706.1206894387865,
+      "pose_write_ms_per_batch": 0.02635650007505319,
+      "scene_refresh_record_ms_per_batch": 0.19228600000000004,
+      "sensor_record_ms_per_batch": 0.4163845,
+      "payload_bytes_per_camera": 344064,
+      "mode": "all_products",
+      "products": [
+        "color",
+        "depth",
+        "normal",
+        "instance",
+        "semantic"
+      ],
+      "num_cameras": 1,
+      "trial": 1
+    },
+    {
+      "batches": 200,
+      "camera_frames": 200,
+      "elapsed_ms": 228.51950000040233,
+      "batch_ms": 1.1425975000020117,
+      "camera_fps": 875.1988342336119,
+      "pose_write_ms_per_batch": 0.021216499899310293,
+      "scene_refresh_record_ms_per_batch": 0.1730949999999999,
+      "sensor_record_ms_per_batch": 0.3274230000000001,
+      "payload_bytes_per_camera": 344064,
+      "mode": "all_products",
+      "products": [
+        "color",
+        "depth",
+        "normal",
+        "instance",
+        "semantic"
+      ],
+      "num_cameras": 1,
+      "trial": 2
+    },
+    {
+      "batches": 200,
+      "camera_frames": 200,
+      "elapsed_ms": 99.89840000343975,
+      "batch_ms": 0.49949200001719873,
+      "camera_fps": 2002.0340665427425,
+      "pose_write_ms_per_batch": 0.018065499898511916,
+      "scene_refresh_record_ms_per_batch": 0.13380450000000002,
+      "sensor_record_ms_per_batch": 0.0,
+      "payload_bytes_per_camera": 49152,
+      "mode": "color_only",
+      "products": [
+        "color"
+      ],
+      "num_cameras": 1,
+      "trial": 2
+    },
+    {
+      "batches": 200,
+      "camera_frames": 200,
+      "elapsed_ms": 114.78630000056,
+      "batch_ms": 0.5739315000028,
+      "camera_fps": 1742.3682094380972,
+      "pose_write_ms_per_batch": 0.019573499830585206,
+      "scene_refresh_record_ms_per_batch": 0.14401349999999996,
+      "sensor_record_ms_per_batch": 0.0,
+      "payload_bytes_per_camera": 49152,
+      "mode": "color_only",
+      "products": [
+        "color"
+      ],
+      "num_cameras": 1,
+      "trial": 3
+    },
+    {
+      "batches": 200,
+      "camera_frames": 200,
+      "elapsed_ms": 247.81189999703201,
+      "batch_ms": 1.23905949998516,
+      "camera_fps": 807.0637447289471,
+      "pose_write_ms_per_batch": 0.019830500041280175,
+      "scene_refresh_record_ms_per_batch": 0.14622849999999996,
+      "sensor_record_ms_per_batch": 0.30285549999999994,
+      "payload_bytes_per_camera": 344064,
+      "mode": "all_products",
+      "products": [
+        "color",
+        "depth",
+        "normal",
+        "instance",
+        "semantic"
+      ],
+      "num_cameras": 1,
+      "trial": 3
+    },
+    {
+      "batches": 200,
+      "camera_frames": 800,
+      "elapsed_ms": 216.73609999925247,
+      "batch_ms": 1.0836804999962624,
+      "camera_fps": 3691.124828779143,
+      "pose_write_ms_per_batch": 0.02233199997135671,
+      "scene_refresh_record_ms_per_batch": 0.16909199999999994,
+      "sensor_record_ms_per_batch": 0.0,
+      "payload_bytes_per_camera": 49152,
+      "mode": "color_only",
+      "products": [
+        "color"
+      ],
+      "num_cameras": 4,
+      "trial": 1
+    },
+    {
+      "batches": 200,
+      "camera_frames": 800,
+      "elapsed_ms": 660.1961000014853,
+      "batch_ms": 3.3009805000074266,
+      "camera_fps": 1211.7611721702085,
+      "pose_write_ms_per_batch": 0.02992949999679695,
+      "scene_refresh_record_ms_per_batch": 0.2547630000000001,
+      "sensor_record_ms_per_batch": 1.0970784999999998,
+      "payload_bytes_per_camera": 344064,
+      "mode": "all_products",
+      "products": [
+        "color",
+        "depth",
+        "normal",
+        "instance",
+        "semantic"
+      ],
+      "num_cameras": 4,
+      "trial": 1
+    },
+    {
+      "batches": 200,
+      "camera_frames": 800,
+      "elapsed_ms": 628.6231999984011,
+      "batch_ms": 3.1431159999920055,
+      "camera_fps": 1272.6224549174049,
+      "pose_write_ms_per_batch": 0.026783000175782945,
+      "scene_refresh_record_ms_per_batch": 0.22628849999999992,
+      "sensor_record_ms_per_batch": 1.0296875,
+      "payload_bytes_per_camera": 344064,
+      "mode": "all_products",
+      "products": [
+        "color",
+        "depth",
+        "normal",
+        "instance",
+        "semantic"
+      ],
+      "num_cameras": 4,
+      "trial": 2
+    },
+    {
+      "batches": 200,
+      "camera_frames": 800,
+      "elapsed_ms": 227.2448000003351,
+      "batch_ms": 1.1362240000016754,
+      "camera_fps": 3520.432590751561,
+      "pose_write_ms_per_batch": 0.021042999851488275,
+      "scene_refresh_record_ms_per_batch": 0.14454950000000003,
+      "sensor_record_ms_per_batch": 0.0,
+      "payload_bytes_per_camera": 49152,
+      "mode": "color_only",
+      "products": [
+        "color"
+      ],
+      "num_cameras": 4,
+      "trial": 2
+    },
+    {
+      "batches": 200,
+      "camera_frames": 800,
+      "elapsed_ms": 217.91310000116937,
+      "batch_ms": 1.0895655000058468,
+      "camera_fps": 3671.188193806187,
+      "pose_write_ms_per_batch": 0.01864549989477382,
+      "scene_refresh_record_ms_per_batch": 0.13709799999999997,
+      "sensor_record_ms_per_batch": 0.0,
+      "payload_bytes_per_camera": 49152,
+      "mode": "color_only",
+      "products": [
+        "color"
+      ],
+      "num_cameras": 4,
+      "trial": 3
+    },
+    {
+      "batches": 200,
+      "camera_frames": 800,
+      "elapsed_ms": 696.5573000015866,
+      "batch_ms": 3.4827865000079328,
+      "camera_fps": 1148.5056577515988,
+      "pose_write_ms_per_batch": 0.02861749984731432,
+      "scene_refresh_record_ms_per_batch": 0.19346649999999993,
+      "sensor_record_ms_per_batch": 1.0190785,
+      "payload_bytes_per_camera": 344064,
+      "mode": "all_products",
+      "products": [
+        "color",
+        "depth",
+        "normal",
+        "instance",
+        "semantic"
+      ],
+      "num_cameras": 4,
+      "trial": 3
+    },
+    {
+      "batches": 200,
+      "camera_frames": 1600,
+      "elapsed_ms": 387.0759999990696,
+      "batch_ms": 1.935379999995348,
+      "camera_fps": 4133.555167470589,
+      "pose_write_ms_per_batch": 0.022610500072914874,
+      "scene_refresh_record_ms_per_batch": 0.15068649999999997,
+      "sensor_record_ms_per_batch": 0.0,
+      "payload_bytes_per_camera": 49152,
+      "mode": "color_only",
+      "products": [
+        "color"
+      ],
+      "num_cameras": 8,
+      "trial": 1
+    },
+    {
+      "batches": 200,
+      "camera_frames": 1600,
+      "elapsed_ms": 1359.7575999992841,
+      "batch_ms": 6.798787999996421,
+      "camera_fps": 1176.680314197797,
+      "pose_write_ms_per_batch": 0.03406749989153468,
+      "scene_refresh_record_ms_per_batch": 0.2273304999999999,
+      "sensor_record_ms_per_batch": 2.0107049999999993,
+      "payload_bytes_per_camera": 344064,
+      "mode": "all_products",
+      "products": [
+        "color",
+        "depth",
+        "normal",
+        "instance",
+        "semantic"
+      ],
+      "num_cameras": 8,
+      "trial": 1
+    },
+    {
+      "batches": 200,
+      "camera_frames": 1600,
+      "elapsed_ms": 1429.0290999997524,
+      "batch_ms": 7.145145499998762,
+      "camera_fps": 1119.6413005167476,
+      "pose_write_ms_per_batch": 0.03715750004630536,
+      "scene_refresh_record_ms_per_batch": 0.24768750000000003,
+      "sensor_record_ms_per_batch": 2.1426804999999978,
+      "payload_bytes_per_camera": 344064,
+      "mode": "all_products",
+      "products": [
+        "color",
+        "depth",
+        "normal",
+        "instance",
+        "semantic"
+      ],
+      "num_cameras": 8,
+      "trial": 2
+    },
+    {
+      "batches": 200,
+      "camera_frames": 1600,
+      "elapsed_ms": 436.32419999994454,
+      "batch_ms": 2.1816209999997227,
+      "camera_fps": 3666.998071617855,
+      "pose_write_ms_per_batch": 0.024631499854876893,
+      "scene_refresh_record_ms_per_batch": 0.17279799999999995,
+      "sensor_record_ms_per_batch": 0.0,
+      "payload_bytes_per_camera": 49152,
+      "mode": "color_only",
+      "products": [
+        "color"
+      ],
+      "num_cameras": 8,
+      "trial": 2
+    },
+    {
+      "batches": 200,
+      "camera_frames": 1600,
+      "elapsed_ms": 391.97559999956866,
+      "batch_ms": 1.9598779999978433,
+      "camera_fps": 4081.8867296886865,
+      "pose_write_ms_per_batch": 0.019995499915239634,
+      "scene_refresh_record_ms_per_batch": 0.14235899999999999,
+      "sensor_record_ms_per_batch": 0.0,
+      "payload_bytes_per_camera": 49152,
+      "mode": "color_only",
+      "products": [
+        "color"
+      ],
+      "num_cameras": 8,
+      "trial": 3
+    },
+    {
+      "batches": 200,
+      "camera_frames": 1600,
+      "elapsed_ms": 1283.2784999991418,
+      "batch_ms": 6.416392499995709,
+      "camera_fps": 1246.806519396273,
+      "pose_write_ms_per_batch": 0.03250199997637537,
+      "scene_refresh_record_ms_per_batch": 0.2130565,
+      "sensor_record_ms_per_batch": 1.8688695000000022,
+      "payload_bytes_per_camera": 344064,
+      "mode": "all_products",
+      "products": [
+        "color",
+        "depth",
+        "normal",
+        "instance",
+        "semantic"
+      ],
+      "num_cameras": 8,
+      "trial": 3
+    }
+  ]
+}

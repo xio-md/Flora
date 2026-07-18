@@ -1,6 +1,6 @@
 # Flora（RTXNS）动态具身仿真渲染与并行渲染推进方案
 
-> 版本：2026-07-18
+> 版本：2026-07-18（Iteration A / A4 完成版）
 >
 > 项目目录：`E:\cplus\Flora`
 >
@@ -46,9 +46,11 @@ instance = obs.instance.to_torch()
 
 ### 0.2 当前结论
 
+- Iteration A 的 A1～A4 已完成：91 个 ReplicaCAD 场景清单解析、完整普通家具装配、URDF 动态层级和五产品 Sensor 均已交付。
 - 已完成的 single-cmdList、多相机异步路径是正确基础，应保留。
 - 多 cmdList/micro-batch 在同一 Vulkan graphics queue 上不会产生相机级 GPU 并行，实测反而降低 11.5%～23.1%，该方向停止推进。
-- 当前主要差距不是“再拆几个 cmdList”，而是缺少完整场景装配、独立多环境、GPU 位姿输入、GPU 输出和多模态 Sensor。
+- 当前已支持 `B=1, C>1` 的 Color/Depth/Normal/Instance/Semantic 对齐 CPU 输出；Color 有异步 ring 路径，多产品目前为同步 readback reference。
+- 当前主要差距不是“再拆几个 cmdList”，而是缺少 `B>1` 独立环境、跨环境资产共享、GPU 位姿输入和 GPU Tensor 输出。
 - 当前不应实现 PhysX `step()`、碰撞、质量和关节驱动；URDF 应作为渲染层级和外部 link pose 的消费者提前实现。
 - 当前 Windows 环境无法得到有效的 SAPIEN `RenderSystemGroup` GPU 对照数据，最终性能比较必须在 Linux/CUDA 上执行。
 
@@ -98,7 +100,7 @@ Iteration B（4 周）：SceneBatch + GPU Pose + GPU Output + SAPIEN 对标
 | `N_rigid` | 每个环境普通刚体实例数 |
 | `N_link` | 每个环境 URDF link 实例数 |
 
-当前实现主要覆盖 `B=1, C>1, P=Color`。后续性能汇报必须明确写出 `B/C/P`，不能只报告模糊的“FPS”。
+当前实现覆盖 `B=1, C>1, P=Color` 的异步路径，以及 `B=1, C>1, P=1～5` 的同步 CPU readback reference。后续性能汇报必须明确写出 `B/C/P`、同步方式和 CPU/GPU 输出端点，不能只报告模糊的“FPS”。
 
 ---
 
@@ -117,6 +119,12 @@ Iteration B（4 周）：SceneBatch + GPU Pose + GPU Output + SAPIEN 对标
 | Ring 占用保护 | `occupancyToken`、可配置深度，busy 时返回 token 0 |
 | Camera 状态同步 | 所有 camera index 无条件同步当前状态 |
 | Async AS 初始化 | 同步和异步路径共享 `record_or_build_shadow_as()` |
+| ReplicaCAD 完整静态场景 | 91 个 `scene_instance.json`，stage + 2,293 个普通对象 |
+| ReplicaCAD URDF 动态层级 | 540 个 articulated instance，3,330 link，2,790 visual |
+| 动态位姿入口 | 稳定 node handle + 原子 `update_node_transforms_batch()` |
+| 多模态 Sensor | RGBA8、Depth R32F、Normal float3、Instance/Semantic uint32 |
+| 稳定标签 | 编译期 node/instance/semantic 表，0 保留给背景/unknown |
+| Genesis 风格接口 | `render_sensor()` / `render_sensor_batch()` 返回 `SensorFrame` |
 
 关键代码入口：
 
@@ -209,11 +217,10 @@ Iteration B（4 周）：SceneBatch + GPU Pose + GPU Output + SAPIEN 对标
 
 继续投入：
 
-- 完整 `scene_instance.json` 装配。
 - `B>1` 独立环境状态和共享资产。
 - GPU PoseSource。
 - GPU OutputArena/DLPack。
-- Sensor 多产品和严格同端点 SAPIEN 基准。
+- 严格同产品、同格式、同同步端点的 SAPIEN 基准。
 
 ---
 
@@ -268,21 +275,20 @@ device->setEventQuery(query, nvrhi::CommandQueue::Graphics);
 
 ### 3.3 Flora Python 原型层
 
-现有 `E:\cplus\Flora\python\rtxns_genesis_style\renderer.py` 已经提供 Genesis 风格原型：
+现有 `E:\cplus\Flora\python\rtxns_genesis_style\renderer.py` 已经提供 Genesis 风格兼容层：
 
-- `:739`：`GenesisStyleRenderer`
-- `:845`：`add_rigid_batch()`
-- `:862`：`update_rigid_batch()`
-- `:983`：`update_scene()`
-- `:1029`：重新生成临时 `scene.glb`
-- `:1134`：逐节点调用 C++ `update_node_transform()`
+- `GenesisStyleRenderer`：兼容 build/update/render 调用模型。
+- `add_rigid_batch()` / `update_rigid_batch()`：保留现有批量兼容入口。
+- 首次 build 后缓存原生 node handle，增量刚体更新调用 `update_node_transforms_batch()`。
+- `render_sensor()` / `render_sensor_batch()`：返回拥有独立 NumPy 存储的 `SensorFrame`。
+- 同一个 sensor batch 中的多个 camera 在一次 `Scene::Refresh` 后录制，观测同一场景帧。
 
-问题：
+当前剩余问题：
 
 1. `add_rigid_batch()` 和 `update_rigid_batch()` 在 Python 按环境循环。
-2. 拓扑变化通过生成一个临时 GLB 并重新 `load_scene()` 完成。
-3. 增量更新依赖字符串名字，最终进入 C++ 线性扫描。
-4. 输出仍以 NumPy/CPU 图像为中心。
+2. 拓扑变化仍通过生成临时 GLB 并重新 `load_scene()` 完成。
+3. 当前只有一个 SceneGraph 的 `B=1` 状态，没有环境间独立 pose/visibility/camera。
+4. 输出仍以同步 NumPy/CPU 图像为中心，多产品尚未接入异步 ring 和 GPU Tensor。
 
 处理原则：
 
@@ -940,6 +946,8 @@ output/replicacad_a3/
 
 ### Week A4：多模态 Sensor 与 Genesis 风格接口
 
+> 状态：已完成（2026-07-18）。详细结果见 `docs/RTXNS_ReplicaCAD_Multimodal_Week_A4_Report.md` 和 `output/replicacad_a4/`。
+
 #### A4.1 目标
 
 以一个 camera render 请求返回对齐的 RGB、Depth、Instance、Semantic 和 Normal，并形成可供 Genesis/外部仿真器调用的稳定 Python API。
@@ -947,43 +955,56 @@ output/replicacad_a3/
 #### A4.2 建议文件
 
 ```text
-src/PythonBindings/sensor_products.h/.cpp
 src/PythonBindings/headless_pbr.h/.cpp
 src/PythonBindings/py_bindings_common.h
 python/donut_render_py/runtime.py
-python/donut_render_py/objects.py
+python/donut_render_py/donut_scene_compiler.py
 python/rtxns_genesis_style/renderer.py
+python/rtxns_genesis_style/sensor.py
 tests/test_sensor_products.py
-tools/demo_genesis_style_replicacad.py
+tools/render_replicacad_multimodal.py
+tools/bench_replicacad_multimodal.py
+tools/stress_replicacad_multimodal.py
+tools/donut_render/genesis_multimodal_smoke.py
+tools/donut_render/runtime_multimodal_smoke.py
 ```
 
 #### A4.3 实施步骤
 
-1. 定义 `SensorRequest`，camera 与 product 分离。
-2. 输出线性 Depth R32F，并明确单位、near/far 和背景值。
-3. 为普通实例和 URDF link 分配全局 instance ID。
-4. 将 object config `semantic_id` 写入 instance/material 数据并输出 Semantic R32U。
-5. 增加 Normal RGBA16F 或 R16G16B16A16_FLOAT 产品。
-6. 先完成 CPU readback reference，GPU OutputArena 放到 Iteration B。
-7. `GenesisStyleRenderer` 改为调用新 build/update/render API，保留兼容方法。
+1. 已定义 product mask，camera 与 Color/Depth/Normal/Instance/Semantic 请求分离。
+2. 已输出光轴方向线性 Depth float32，单位为米，背景为 0。
+3. 已为 stage、普通对象和整个 articulated object 分配稳定非零 instance ID；同一 articulation 的所有 visual 继承 root ID。
+4. 已将 ReplicaCAD object config `semantic_id` 映射到 Semantic uint32；背景、stage 和当前无语义 articulated object 为 0。
+5. 已复用 Donut `GBufferFillPass` 输出 world-space Normal，并在 CPU 解码为 float32 unit vector。
+6. 已完成同步 CPU readback reference；GPU OutputArena 保留到 Iteration B。
+7. 已在 `GenesisStyleRenderer` 和 `donut_render_py.Scene` 增加 `render_sensor()` / `render_sensor_batch()`，保留 Color 兼容方法。
 
 #### A4.4 验收标准
 
-- 所有产品 shape/dtype 与文档一致。
-- RGB、Depth、Instance、Semantic、Normal 的边缘在像素级对齐。
-- 随机选择至少 20 个对象，中心像素 instance/semantic ID 与 manifest 一致。
-- Depth 与相机几何 reference 误差在定义容差内。
-- 一个外部 scripted simulator 只提供 PoseBatch，即可驱动场景并获取观测。
-- 1000 帧多产品渲染无资源增长和 ID 变化。
+| 验收项 | 结果 |
+|---|---|
+| 五产品 shape/dtype | 通过：RGBA8、R32F、float3、uint32、uint32 |
+| Depth/Normal/Instance 有效像素掩码 | 1280×720 全图逐像素一致 |
+| Instance/Semantic | 61 个可见实例；20 个代表像素与全图映射均正确 |
+| Depth 几何 reference | 3 m 平面误差 `2.861e-6 m` |
+| 外部 PoseBatch + SensorFrame | Genesis 风格双相机动态 smoke 通过 |
+| 1000 帧稳定性 | 五产品恢复哈希一致，标签错误 0，RSS `+0.63 MiB` |
+| 重复 instance ID | 原生 API 明确拒绝，0 保留给背景 |
 
 #### A4.5 周报成果
 
-| 能力 | Iteration A 前 | Week A4 后 |
-|---|---|---|
-| ReplicaCAD | 单 stage GLB | 完整 scene instance |
-| 动态对象 | 少量名字更新 | 普通刚体 + URDF link batch pose |
-| 产品 | RGBA8 | RGB/Depth/Instance/Semantic/Normal |
-| Python 调用 | 渲染器测试 API | Genesis 风格 build/update/render |
+| 能力/指标 | Iteration A 前 | Week A4 后 |
+|---|---:|---:|
+| ReplicaCAD | 单 stage GLB | 91 场景完整 scene instance + URDF |
+| 动态对象 | 少量名字更新 | 26 关节/批的 handle + matrix 更新 |
+| 产品 | RGBA8 | RGBA/Depth/Normal/Instance/Semantic |
+| Python 调用 | 渲染器测试 API | `SensorFrame` + 单/多相机接口 |
+| 128×96 N=1 五产品 | 无 | `807 cam-FPS` |
+| 128×96 N=4 五产品 | 无 | `1,212 cam-FPS` |
+| 128×96 N=8 五产品 | 无 | `1,177 cam-FPS` |
+| 1000 帧多产品 | 无 | 通过，RSS `+0.63 MiB` |
+
+本次吞吐为 `B=1, C=N`、动态 26 关节、RT off、同步 CPU readback；不是 GPU-ready SAPIEN 对标端点。五产品每相机 payload 为 344,064 bytes，是 Color-only 49,152 bytes 的 7 倍，且增加一次 GBuffer pass 和一次 MaterialID pass。N=8 的五产品吞吐仅为 Color-only 的 28.8%，表明 Iteration B 的 GPU OutputArena 和 pass/pack 优化是主线。
 
 ---
 
@@ -1287,7 +1308,8 @@ B=8, C=1, ColorRGBA8, 1280x720, tensor_ready = 742 cam-FPS
 3. Week A1 已完成：`ReplicaCADManifest/SceneDesc`、91 场景覆盖率、路径解析和 transform tests 已交付。
 4. Week A2 已完成：`SceneDesc -> Donut SceneGraph`、场景内资产去重、91 场景原生 smoke 和完整场景并行基线已交付。
 5. Week A3 已完成：URDF link/visual 层级、稳定 node handle、CPU FK reference、批量动态位姿和 1000 帧长稳态已交付。
-6. 下一项开发进入 Week A4：实现 RGB/Depth/Instance/Semantic/Normal 对齐输出，并固化 Genesis 风格的动态 sensor API。
+6. Week A4 已完成：RGBA/Depth/Normal/Instance/Semantic 对齐输出、稳定标签、Genesis 风格 SensorFrame API、性能基线和 1000 帧长稳态已交付。
+7. 下一项开发进入 Week B1：实现 `B>1` 独立环境状态、不可变资产共享和环境隔离验收；暂不先做 RT 阴影画质或多 cmdList。
 
 ### Iteration A 完成定义
 

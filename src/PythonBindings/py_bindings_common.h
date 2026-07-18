@@ -3,6 +3,7 @@
 #include "headless_pbr.h"
 
 #include <string>
+#include <unordered_set>
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -59,6 +60,11 @@ inline void bind_rtxns_headless_pbr_module(py::module_ &m)
         .def("get_node_world_transform_by_handle",
             &rtxns::python::HeadlessPbrScene::get_node_world_transform_by_handle,
             py::arg("handle"))
+        .def("set_node_labels",
+            &rtxns::python::HeadlessPbrScene::set_node_labels,
+            py::arg("node_names"),
+            py::arg("instance_ids"),
+            py::arg("semantic_ids"))
         .def("get_scene_stats",
             [](const rtxns::python::HeadlessPbrScene &self)
             {
@@ -158,6 +164,74 @@ inline void bind_rtxns_headless_pbr_module(py::module_ &m)
                 return out;
             },
             py::arg("camera_indices"))
+        .def("render_sensor_batch",
+            [](rtxns::python::HeadlessPbrScene &self,
+                const std::vector<uint32_t>& indices,
+                const std::vector<std::string>& products)
+            {
+                uint32_t mask = 0;
+                std::unordered_set<std::string> uniqueProducts;
+                for (const auto& product : products)
+                {
+                    if (!uniqueProducts.insert(product).second)
+                        continue;
+                    if (product == "color")
+                        mask |= rtxns::python::HeadlessPbrScene::SensorColor;
+                    else if (product == "depth")
+                        mask |= rtxns::python::HeadlessPbrScene::SensorDepth;
+                    else if (product == "normal")
+                        mask |= rtxns::python::HeadlessPbrScene::SensorNormal;
+                    else if (product == "instance")
+                        mask |= rtxns::python::HeadlessPbrScene::SensorInstance;
+                    else if (product == "semantic")
+                        mask |= rtxns::python::HeadlessPbrScene::SensorSemantic;
+                    else
+                        throw py::value_error("Unknown sensor product: " + product);
+                }
+
+                auto frames = [&]()
+                {
+                    py::gil_scoped_release release;
+                    return self.render_sensor_batch(indices, mask);
+                }();
+
+                py::list output;
+                for (const auto& frame : frames)
+                {
+                    py::dict item;
+                    item["width"] = frame.width;
+                    item["height"] = frame.height;
+                    if (!frame.color_rgba8.empty())
+                        item["color"] = py::bytes(
+                            reinterpret_cast<const char*>(frame.color_rgba8.data()),
+                            static_cast<py::ssize_t>(frame.color_rgba8.size()));
+                    if (!frame.depth_linear.empty())
+                        item["depth"] = py::bytes(
+                            reinterpret_cast<const char*>(frame.depth_linear.data()),
+                            static_cast<py::ssize_t>(
+                                frame.depth_linear.size() * sizeof(float)));
+                    if (!frame.normal_world.empty())
+                        item["normal"] = py::bytes(
+                            reinterpret_cast<const char*>(frame.normal_world.data()),
+                            static_cast<py::ssize_t>(
+                                frame.normal_world.size() * sizeof(float)));
+                    if (!frame.instance.empty())
+                        item["instance"] = py::bytes(
+                            reinterpret_cast<const char*>(frame.instance.data()),
+                            static_cast<py::ssize_t>(
+                                frame.instance.size() * sizeof(uint32_t)));
+                    if (!frame.semantic.empty())
+                        item["semantic"] = py::bytes(
+                            reinterpret_cast<const char*>(frame.semantic.data()),
+                            static_cast<py::ssize_t>(
+                                frame.semantic.size() * sizeof(uint32_t)));
+                    output.append(std::move(item));
+                }
+                return output;
+            },
+            py::arg("camera_indices"),
+            py::arg("products") = std::vector<std::string>{
+                "color", "depth", "normal", "instance", "semantic"})
         .def("submit_frame_batch",
             &rtxns::python::HeadlessPbrScene::submit_frame_batch,
             py::arg("camera_indices"))
@@ -194,6 +268,7 @@ inline void bind_rtxns_headless_pbr_module(py::module_ &m)
                 d["total_ms"] = s.total_ms;
                 d["scene_refresh_cpu_ms"] = s.scene_refresh_cpu_ms;
                 d["shadow_as_record_cpu_ms"] = s.shadow_as_record_cpu_ms;
+                d["sensor_record_cpu_ms"] = s.sensor_record_cpu_ms;
                 d["raster_ms"] = s.raster_ms;
                 d["blas_build_ms"] = s.blas_build_ms;
                 d["tlas_build_ms"] = s.tlas_build_ms;

@@ -272,6 +272,14 @@ class CompiledUrdfLinkDesc:
 
 
 @dataclass(frozen=True)
+class CompiledSensorLabelDesc:
+    node_name: str
+    instance_id: int
+    semantic_id: int
+    kind: str
+
+
+@dataclass(frozen=True)
 class CompiledArticulationDesc:
     root_node_name: str
     instance_id: int
@@ -414,6 +422,39 @@ class CompiledDonutScene:
             names.extend(articulation.control_node_names)
         return tuple(names)
 
+    @property
+    def sensor_labels(self) -> tuple[CompiledSensorLabelDesc, ...]:
+        labels = [
+            CompiledSensorLabelDesc(
+                node_name=instance.node_name,
+                instance_id=instance.instance_id + 1,
+                semantic_id=max(0, instance.semantic_id),
+                kind=instance.kind,
+            )
+            for instance in self.instances
+        ]
+        labels.extend(
+            CompiledSensorLabelDesc(
+                node_name=articulation.root_node_name,
+                instance_id=articulation.instance_id + 1,
+                semantic_id=0,
+                kind="articulation",
+            )
+            for articulation in self.articulations
+        )
+        return tuple(labels)
+
+    def configure_sensor_labels(self, native_scene: object) -> None:
+        labels = self.sensor_labels
+        setter = getattr(native_scene, "set_node_labels", None)
+        if setter is None:
+            raise TypeError("native_scene does not provide set_node_labels().")
+        setter(
+            [label.node_name for label in labels],
+            [label.instance_id for label in labels],
+            [label.semantic_id for label in labels],
+        )
+
     def logical_node_handle(self, node_name: str) -> int:
         try:
             return self.control_node_names.index(str(node_name))
@@ -547,6 +588,15 @@ class CompiledDonutScene:
                 }
                 for articulation in self.articulations
             ],
+            "sensor_labels": [
+                {
+                    "node_name": label.node_name,
+                    "instance_id": label.instance_id,
+                    "semantic_id": label.semantic_id,
+                    "kind": label.kind,
+                }
+                for label in self.sensor_labels
+            ],
             "control_nodes": control_nodes,
             "omitted_articulated_instances": self.omitted_articulated_instances,
         }
@@ -556,13 +606,14 @@ class CompiledDonutScene:
             ).encode("utf-8")
         ).hexdigest()
         return {
-            "schema_version": 2,
+            "schema_version": 3,
             **semantic_payload,
             "summary": {
                 "unique_models": self.model_count,
                 "render_instances": self.render_instance_count,
                 "graph_nodes": self.graph_node_count,
                 "control_nodes": len(control_nodes),
+                "sensor_labels": len(self.sensor_labels),
                 "stage_instances": sum(
                     instance.kind == "stage" for instance in self.instances
                 ),

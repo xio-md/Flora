@@ -59,6 +59,21 @@ class ReplicaCADArticulationTests(unittest.TestCase):
         for index, name in enumerate(names):
             self.assertEqual(self.compiled.logical_node_handle(name), index)
 
+    def test_sensor_labels_are_stable_and_reserve_zero_for_background(self) -> None:
+        labels = self.compiled.sensor_labels
+        self.assertEqual(len(labels), 120)
+        self.assertEqual(
+            {label.instance_id for label in labels},
+            set(range(1, 121)),
+        )
+        self.assertEqual(labels[0].kind, "stage")
+        self.assertEqual(labels[0].semantic_id, 0)
+        ordinary = next(label for label in labels if label.kind == "object")
+        self.assertGreater(ordinary.semantic_id, 0)
+        self.assertTrue(
+            all(label.semantic_id == 0 for label in labels if label.kind == "articulation")
+        )
+
     def test_prismatic_joint_update_uses_joint_local_axis(self) -> None:
         cabinet = self.by_template["cabinet"]
         names, matrices = cabinet.joint_transform_updates({"left_slide": 0.4})

@@ -40,10 +40,12 @@ from .objects import (
     WavePathIntegrator,
 )
 from .runtime import Scene, create_scene, destroy, init
+from rtxns_genesis_style import SENSOR_PRODUCTS, SensorFrame
 from .donut_scene_compiler import (
     CompiledArticulationDesc,
     CompiledDonutScene,
     CompiledInstanceDesc,
+    CompiledSensorLabelDesc,
     CompiledUrdfLinkDesc,
     CompiledUrdfVisualDesc,
     DonutSceneArtifact,
@@ -79,6 +81,7 @@ __all__ = [
     "CompiledArticulationDesc",
     "CompiledDonutScene",
     "CompiledInstanceDesc",
+    "CompiledSensorLabelDesc",
     "CompiledUrdfLinkDesc",
     "CompiledUrdfVisualDesc",
     "DeformableShape",
@@ -109,6 +112,8 @@ __all__ = [
     "RuntimeNotInitializedError",
     "SRGBSpectrum",
     "Scene",
+    "SENSOR_PRODUCTS",
+    "SensorFrame",
     "SceneDesc",
     "SceneDestroyedError",
     "SceneNotInitializedError",

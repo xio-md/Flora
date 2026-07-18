@@ -1,0 +1,608 @@
+{
+  "schema_version": 1,
+  "scene": "apt_0",
+  "mode": "raster",
+  "camera": {
+    "position": [
+      3.5,
+      2.0,
+      3.5
+    ],
+    "target": [
+      0.0,
+      1.0,
+      0.0
+    ],
+    "up": [
+      0.0,
+      1.0,
+      0.0
+    ],
+    "fov_degrees": 60.0,
+    "z_near": 0.05,
+    "z_far": 50.0
+  },
+  "load_ms": 485.06600000109756,
+  "scene_path": "output/replicacad_a4/apt_0.donut_scene.json",
+  "sensor_label_count": 120,
+  "updated_joint_count": 7,
+  "closed": {
+    "resolution": [
+      1280,
+      720
+    ],
+    "products": {
+      "color": {
+        "shape": [
+          720,
+          1280,
+          4
+        ],
+        "dtype": "uint8"
+      },
+      "depth": {
+        "shape": [
+          720,
+          1280
+        ],
+        "dtype": "float32"
+      },
+      "normal": {
+        "shape": [
+          720,
+          1280,
+          3
+        ],
+        "dtype": "float32"
+      },
+      "instance": {
+        "shape": [
+          720,
+          1280
+        ],
+        "dtype": "uint32"
+      },
+      "semantic": {
+        "shape": [
+          720,
+          1280
+        ],
+        "dtype": "uint32"
+      }
+    },
+    "valid_pixels": 786375,
+    "valid_pixel_ratio": 0.853271484375,
+    "visible_instance_count": 61,
+    "visible_semantic_count": 27,
+    "depth_min_m": 2.0362913608551025,
+    "depth_max_m": 8.952271461486816,
+    "normal_unit_error_mean": 1.5008357223678104e-08,
+    "normal_unit_error_max": 1.1920928955078125e-07,
+    "aligned_valid_masks": true,
+    "background_zero": true,
+    "instance_semantic_mapping_exact": true
+  },
+  "open": {
+    "resolution": [
+      1280,
+      720
+    ],
+    "products": {
+      "color": {
+        "shape": [
+          720,
+          1280,
+          4
+        ],
+        "dtype": "uint8"
+      },
+      "depth": {
+        "shape": [
+          720,
+          1280
+        ],
+        "dtype": "float32"
+      },
+      "normal": {
+        "shape": [
+          720,
+          1280,
+          3
+        ],
+        "dtype": "float32"
+      },
+      "instance": {
+        "shape": [
+          720,
+          1280
+        ],
+        "dtype": "uint32"
+      },
+      "semantic": {
+        "shape": [
+          720,
+          1280
+        ],
+        "dtype": "uint32"
+      }
+    },
+    "valid_pixels": 786375,
+    "valid_pixel_ratio": 0.853271484375,
+    "visible_instance_count": 61,
+    "visible_semantic_count": 27,
+    "depth_min_m": 2.0362913608551025,
+    "depth_max_m": 8.952271461486816,
+    "normal_unit_error_mean": 1.551649830844326e-08,
+    "normal_unit_error_max": 1.1920928955078125e-07,
+    "aligned_valid_masks": true,
+    "background_zero": true,
+    "instance_semantic_mapping_exact": true
+  },
+  "closed_representative_samples": [
+    {
+      "instance_id": 1,
+      "semantic_id": 0,
+      "node_name": "replicacad_stage_000000",
+      "kind": "stage",
+      "representative_pixel_xy": [
+        761,
+        392
+      ]
+    },
+    {
+      "instance_id": 2,
+      "semantic_id": 3,
+      "node_name": "replicacad_object_000001",
+      "kind": "object",
+      "representative_pixel_xy": [
+        497,
+        323
+      ]
+    },
+    {
+      "instance_id": 4,
+      "semantic_id": 10,
+      "node_name": "replicacad_object_000003",
+      "kind": "object",
+      "representative_pixel_xy": [
+        552,
+        386
+      ]
+    },
+    {
+      "instance_id": 5,
+      "semantic_id": 10,
+      "node_name": "replicacad_object_000004",
+      "kind": "object",
+      "representative_pixel_xy": [
+        540,
+        380
+      ]
+    },
+    {
+      "instance_id": 19,
+      "semantic_id": 98,
+      "node_name": "replicacad_object_000018",
+      "kind": "object",
+      "representative_pixel_xy": [
+        472,
+        658
+      ]
+    },
+    {
+      "instance_id": 51,
+      "semantic_id": 80,
+      "node_name": "replicacad_object_000050",
+      "kind": "object",
+      "representative_pixel_xy": [
+        385,
+        580
+      ]
+    },
+    {
+      "instance_id": 53,
+      "semantic_id": 46,
+      "node_name": "replicacad_object_000052",
+      "kind": "object",
+      "representative_pixel_xy": [
+        337,
+        586
+      ]
+    },
+    {
+      "instance_id": 55,
+      "semantic_id": 46,
+      "node_name": "replicacad_object_000054",
+      "kind": "object",
+      "representative_pixel_xy": [
+        360,
+        665
+      ]
+    },
+    {
+      "instance_id": 56,
+      "semantic_id": 21,
+      "node_name": "replicacad_object_000055",
+      "kind": "object",
+      "representative_pixel_xy": [
+        352,
+        684
+      ]
+    },
+    {
+      "instance_id": 57,
+      "semantic_id": 20,
+      "node_name": "replicacad_object_000056",
+      "kind": "object",
+      "representative_pixel_xy": [
+        13,
+        482
+      ]
+    },
+    {
+      "instance_id": 58,
+      "semantic_id": 20,
+      "node_name": "replicacad_object_000057",
+      "kind": "object",
+      "representative_pixel_xy": [
+        629,
+        357
+      ]
+    },
+    {
+      "instance_id": 59,
+      "semantic_id": 50,
+      "node_name": "replicacad_object_000058",
+      "kind": "object",
+      "representative_pixel_xy": [
+        311,
+        480
+      ]
+    },
+    {
+      "instance_id": 60,
+      "semantic_id": 44,
+      "node_name": "replicacad_object_000059",
+      "kind": "object",
+      "representative_pixel_xy": [
+        1251,
+        267
+      ]
+    },
+    {
+      "instance_id": 61,
+      "semantic_id": 80,
+      "node_name": "replicacad_object_000060",
+      "kind": "object",
+      "representative_pixel_xy": [
+        701,
+        422
+      ]
+    },
+    {
+      "instance_id": 62,
+      "semantic_id": 52,
+      "node_name": "replicacad_object_000061",
+      "kind": "object",
+      "representative_pixel_xy": [
+        727,
+        301
+      ]
+    },
+    {
+      "instance_id": 63,
+      "semantic_id": 17,
+      "node_name": "replicacad_object_000062",
+      "kind": "object",
+      "representative_pixel_xy": [
+        734,
+        258
+      ]
+    },
+    {
+      "instance_id": 64,
+      "semantic_id": 64,
+      "node_name": "replicacad_object_000063",
+      "kind": "object",
+      "representative_pixel_xy": [
+        197,
+        376
+      ]
+    },
+    {
+      "instance_id": 65,
+      "semantic_id": 28,
+      "node_name": "replicacad_object_000064",
+      "kind": "object",
+      "representative_pixel_xy": [
+        194,
+        371
+      ]
+    },
+    {
+      "instance_id": 66,
+      "semantic_id": 28,
+      "node_name": "replicacad_object_000065",
+      "kind": "object",
+      "representative_pixel_xy": [
+        202,
+        364
+      ]
+    },
+    {
+      "instance_id": 67,
+      "semantic_id": 64,
+      "node_name": "replicacad_object_000066",
+      "kind": "object",
+      "representative_pixel_xy": [
+        251,
+        365
+      ]
+    }
+  ],
+  "open_representative_samples": [
+    {
+      "instance_id": 1,
+      "semantic_id": 0,
+      "node_name": "replicacad_stage_000000",
+      "kind": "stage",
+      "representative_pixel_xy": [
+        761,
+        392
+      ]
+    },
+    {
+      "instance_id": 2,
+      "semantic_id": 3,
+      "node_name": "replicacad_object_000001",
+      "kind": "object",
+      "representative_pixel_xy": [
+        497,
+        323
+      ]
+    },
+    {
+      "instance_id": 4,
+      "semantic_id": 10,
+      "node_name": "replicacad_object_000003",
+      "kind": "object",
+      "representative_pixel_xy": [
+        552,
+        386
+      ]
+    },
+    {
+      "instance_id": 5,
+      "semantic_id": 10,
+      "node_name": "replicacad_object_000004",
+      "kind": "object",
+      "representative_pixel_xy": [
+        540,
+        380
+      ]
+    },
+    {
+      "instance_id": 19,
+      "semantic_id": 98,
+      "node_name": "replicacad_object_000018",
+      "kind": "object",
+      "representative_pixel_xy": [
+        472,
+        658
+      ]
+    },
+    {
+      "instance_id": 51,
+      "semantic_id": 80,
+      "node_name": "replicacad_object_000050",
+      "kind": "object",
+      "representative_pixel_xy": [
+        385,
+        580
+      ]
+    },
+    {
+      "instance_id": 53,
+      "semantic_id": 46,
+      "node_name": "replicacad_object_000052",
+      "kind": "object",
+      "representative_pixel_xy": [
+        337,
+        586
+      ]
+    },
+    {
+      "instance_id": 55,
+      "semantic_id": 46,
+      "node_name": "replicacad_object_000054",
+      "kind": "object",
+      "representative_pixel_xy": [
+        360,
+        665
+      ]
+    },
+    {
+      "instance_id": 56,
+      "semantic_id": 21,
+      "node_name": "replicacad_object_000055",
+      "kind": "object",
+      "representative_pixel_xy": [
+        352,
+        684
+      ]
+    },
+    {
+      "instance_id": 57,
+      "semantic_id": 20,
+      "node_name": "replicacad_object_000056",
+      "kind": "object",
+      "representative_pixel_xy": [
+        13,
+        482
+      ]
+    },
+    {
+      "instance_id": 58,
+      "semantic_id": 20,
+      "node_name": "replicacad_object_000057",
+      "kind": "object",
+      "representative_pixel_xy": [
+        629,
+        357
+      ]
+    },
+    {
+      "instance_id": 59,
+      "semantic_id": 50,
+      "node_name": "replicacad_object_000058",
+      "kind": "object",
+      "representative_pixel_xy": [
+        311,
+        480
+      ]
+    },
+    {
+      "instance_id": 60,
+      "semantic_id": 44,
+      "node_name": "replicacad_object_000059",
+      "kind": "object",
+      "representative_pixel_xy": [
+        1251,
+        267
+      ]
+    },
+    {
+      "instance_id": 61,
+      "semantic_id": 80,
+      "node_name": "replicacad_object_000060",
+      "kind": "object",
+      "representative_pixel_xy": [
+        701,
+        422
+      ]
+    },
+    {
+      "instance_id": 62,
+      "semantic_id": 52,
+      "node_name": "replicacad_object_000061",
+      "kind": "object",
+      "representative_pixel_xy": [
+        727,
+        301
+      ]
+    },
+    {
+      "instance_id": 63,
+      "semantic_id": 17,
+      "node_name": "replicacad_object_000062",
+      "kind": "object",
+      "representative_pixel_xy": [
+        734,
+        258
+      ]
+    },
+    {
+      "instance_id": 64,
+      "semantic_id": 64,
+      "node_name": "replicacad_object_000063",
+      "kind": "object",
+      "representative_pixel_xy": [
+        197,
+        376
+      ]
+    },
+    {
+      "instance_id": 65,
+      "semantic_id": 28,
+      "node_name": "replicacad_object_000064",
+      "kind": "object",
+      "representative_pixel_xy": [
+        194,
+        371
+      ]
+    },
+    {
+      "instance_id": 66,
+      "semantic_id": 28,
+      "node_name": "replicacad_object_000065",
+      "kind": "object",
+      "representative_pixel_xy": [
+        202,
+        364
+      ]
+    },
+    {
+      "instance_id": 67,
+      "semantic_id": 64,
+      "node_name": "replicacad_object_000066",
+      "kind": "object",
+      "representative_pixel_xy": [
+        251,
+        365
+      ]
+    }
+  ],
+  "dynamic_changed_pixel_ratio": {
+    "color": 0.04686957465277778,
+    "depth": 0.04938585069444444,
+    "normal": 0.04430121527777778,
+    "instance": 0.0014756944444444444,
+    "semantic": 0.0
+  },
+  "native_frame_stats": {
+    "closed": {
+      "total_ms": 0.0,
+      "scene_refresh_cpu_ms": 0.6075,
+      "shadow_as_record_cpu_ms": 0.0,
+      "sensor_record_cpu_ms": 26.9624,
+      "raster_ms": 0.0,
+      "blas_build_ms": 0.0,
+      "tlas_build_ms": 0.0,
+      "shadow_ray_ms": 0.0,
+      "composite_ms": 0.0,
+      "readback_ms": 0.0,
+      "rt_shadows_enabled": false,
+      "as_built_this_frame": false
+    },
+    "open": {
+      "total_ms": 0.0,
+      "scene_refresh_cpu_ms": 3.2465,
+      "shadow_as_record_cpu_ms": 0.0,
+      "sensor_record_cpu_ms": 0.6394,
+      "raster_ms": 0.0,
+      "blas_build_ms": 0.0,
+      "tlas_build_ms": 0.0,
+      "shadow_ray_ms": 0.0,
+      "composite_ms": 0.0,
+      "readback_ms": 0.0,
+      "rt_shadows_enabled": false,
+      "as_built_this_frame": false
+    }
+  },
+  "images": {
+    "closed": {
+      "color": "output/replicacad_a4/apt_0_closed_color.png",
+      "depth": "output/replicacad_a4/apt_0_closed_depth.png",
+      "normal": "output/replicacad_a4/apt_0_closed_normal.png",
+      "instance": "output/replicacad_a4/apt_0_closed_instance.png",
+      "semantic": "output/replicacad_a4/apt_0_closed_semantic.png"
+    },
+    "open": {
+      "color": "output/replicacad_a4/apt_0_open_color.png",
+      "depth": "output/replicacad_a4/apt_0_open_depth.png",
+      "normal": "output/replicacad_a4/apt_0_open_normal.png",
+      "instance": "output/replicacad_a4/apt_0_open_instance.png",
+      "semantic": "output/replicacad_a4/apt_0_open_semantic.png"
+    }
+  },
+  "contact_sheet": "output/replicacad_a4/apt_0_multimodal_contact_sheet.png",
+  "checks": {
+    "duplicate_instance_id_rejected": true,
+    "closed_products_valid": true,
+    "open_products_valid": true,
+    "at_least_20_visible_instances": true,
+    "dynamic_geometry_changes_geometric_products": true,
+    "semantic_mapping_remains_exact": true
+  },
+  "passed": true
+}

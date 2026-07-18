@@ -7,7 +7,9 @@
 #include <cstdio>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <iostream>
+#include <limits>
 #include <mutex>
 #include <stdexcept>
 #include <utility>
@@ -25,6 +27,8 @@
 #include <donut/engine/View.h>
 #include <donut/render/DrawStrategy.h>
 #include <donut/render/ForwardShadingPass.h>
+#include <donut/render/GBuffer.h>
+#include <donut/render/GBufferFillPass.h>
 #include <donut/render/GeometryPasses.h>
 #include <nvrhi/utils.h>
 
@@ -44,6 +48,9 @@ namespace rtxns::python
     using donut::engine::ShaderFactory;
     using donut::engine::TextureCache;
     using donut::render::ForwardShadingPass;
+    using donut::render::GBufferFillPass;
+    using donut::render::GBufferRenderTargets;
+    using donut::render::MaterialIDPass;
     using donut::vfs::NativeFileSystem;
     using donut::vfs::RootFileSystem;
     using donut::math::radians;
@@ -223,6 +230,14 @@ namespace rtxns::python
         nvrhi::TextureHandle compositeOutput;
         nvrhi::TextureHandle litColorSRV;
 
+        // A4 sensor products are allocated lazily on the first multimodal request.
+        std::unique_ptr<GBufferRenderTargets> sensorGBuffer;
+        std::shared_ptr<FramebufferFactory> sensorIdFramebuffer;
+        nvrhi::TextureHandle sensorIdTarget;
+        nvrhi::StagingTextureHandle sensorDepthReadback;
+        nvrhi::StagingTextureHandle sensorNormalReadback;
+        nvrhi::StagingTextureHandle sensorIdReadback;
+
         // Week 2: keep per-dispatch binding sets alive until command list finishes.
         std::vector<nvrhi::BindingSetHandle> frameBindingScratch;
 
@@ -243,6 +258,12 @@ namespace rtxns::python
 
     class HeadlessPbrScene::Impl
     {
+        struct MeshSensorLabel
+        {
+            uint32_t instance_id = 0;
+            uint32_t semantic_id = 0;
+        };
+
     public:
         explicit Impl(std::shared_ptr<RendererContext> context)
             : m_context(std::move(context))
@@ -251,6 +272,18 @@ namespace rtxns::python
             m_texture_cache = std::make_shared<TextureCache>(m_context->device(), m_native_fs, nullptr);
             m_forward_pass = std::make_unique<ForwardShadingPass>(m_context->device(), m_context->common_passes());
             m_forward_pass->Init(*m_context->shader_factory(), ForwardShadingPass::CreateParameters{});
+
+            m_sensorGBufferPass = std::make_unique<GBufferFillPass>(
+                m_context->device(), m_context->common_passes());
+            GBufferFillPass::CreateParameters gbufferParams;
+            gbufferParams.enableDepthWrite = true;
+            m_sensorGBufferPass->Init(*m_context->shader_factory(), gbufferParams);
+
+            m_sensorIdPass = std::make_unique<MaterialIDPass>(
+                m_context->device(), m_context->common_passes());
+            GBufferFillPass::CreateParameters idParams;
+            idParams.enableDepthWrite = false;
+            m_sensorIdPass->Init(*m_context->shader_factory(), idParams);
 
             // Create default camera 0 slot and use legacy path directly.
             m_views.emplace_back();
@@ -298,6 +331,8 @@ namespace rtxns::python
             device->runGarbageCollection();
 
             m_forward_pass->ResetBindingCache();
+            m_sensorGBufferPass->ResetBindingCache();
+            m_sensorIdPass->ResetBindingCache();
             for (auto& view : m_views)
             {
                 view.frameBindingScratch.clear();
@@ -308,6 +343,7 @@ namespace rtxns::python
             m_nodeHandles.clear();
             m_nodeHandleByName.clear();
             m_ambiguousNodeNames.clear();
+            m_meshSensorLabels.clear();
             if (m_rtShadowPass)
             {
                 m_rtShadowPass->setSceneResources(
@@ -343,6 +379,7 @@ namespace rtxns::python
             m_frame_index = 0;
             m_scene->RefreshSceneGraph(m_frame_index);
             rebuild_node_handle_table();
+            rebuild_default_sensor_labels();
             m_shadowSceneResources = rtxns::shadow::SceneGeometryProvider::buildShadowSceneResources(
                 device, *m_scene->GetSceneGraph());
             if (m_rtShadowPass && m_shadowSceneResources.instanceCount > 0)
@@ -590,6 +627,110 @@ namespace rtxns::python
             uint32_t handle) const
         {
             return world_transform_values(node_from_handle(handle));
+        }
+
+        void set_node_labels(
+            const std::vector<std::string>& nodeNames,
+            const std::vector<uint32_t>& instanceIds,
+            const std::vector<uint32_t>& semanticIds)
+        {
+            if (nodeNames.size() != instanceIds.size() ||
+                nodeNames.size() != semanticIds.size())
+            {
+                throw std::invalid_argument(
+                    "set_node_labels expects one instance and semantic id per node.");
+            }
+            if (!m_scene || !m_scene->GetSceneGraph())
+            {
+                throw std::runtime_error("No scene has been loaded.");
+            }
+
+            const auto handles = get_node_handles(nodeNames);
+            std::unordered_map<const donut::engine::SceneGraphNode*, MeshSensorLabel> labelsByNode;
+            labelsByNode.reserve(handles.size());
+            std::unordered_set<uint32_t> uniqueInstanceIds;
+            uniqueInstanceIds.reserve(instanceIds.size());
+            for (size_t index = 0; index < handles.size(); ++index)
+            {
+                if (instanceIds[index] == 0)
+                {
+                    throw std::invalid_argument(
+                        "Sensor instance id 0 is reserved for background pixels.");
+                }
+                if (!uniqueInstanceIds.insert(instanceIds[index]).second)
+                {
+                    throw std::invalid_argument(
+                        "Sensor instance ids must be unique across labeled nodes.");
+                }
+                const auto* node = node_from_handle(handles[index]);
+                if (!labelsByNode.emplace(
+                        node,
+                        MeshSensorLabel{instanceIds[index], semanticIds[index]}).second)
+                {
+                    throw std::invalid_argument(
+                        "set_node_labels does not accept duplicate scene nodes.");
+                }
+            }
+
+            const auto& meshInstances = m_scene->GetSceneGraph()->GetMeshInstances();
+            std::vector<MeshSensorLabel> candidate(meshInstances.size());
+            for (const auto& meshInstance : meshInstances)
+            {
+                if (!meshInstance || meshInstance->GetInstanceIndex() < 0)
+                {
+                    continue;
+                }
+                const auto rawIndex = static_cast<size_t>(meshInstance->GetInstanceIndex());
+                if (rawIndex >= candidate.size())
+                {
+                    throw std::runtime_error("Scene mesh instance index is out of range.");
+                }
+                candidate[rawIndex] = MeshSensorLabel{
+                    static_cast<uint32_t>(rawIndex + 1u),
+                    0u,
+                };
+            }
+            std::vector<bool> matched(handles.size(), false);
+            std::unordered_map<const donut::engine::SceneGraphNode*, size_t> labelIndexByNode;
+            for (size_t index = 0; index < handles.size(); ++index)
+            {
+                labelIndexByNode.emplace(node_from_handle(handles[index]), index);
+            }
+
+            for (const auto& meshInstance : meshInstances)
+            {
+                if (!meshInstance || meshInstance->GetInstanceIndex() < 0)
+                {
+                    continue;
+                }
+                const auto rawIndex = static_cast<size_t>(meshInstance->GetInstanceIndex());
+                if (rawIndex >= candidate.size())
+                {
+                    throw std::runtime_error("Scene mesh instance index is out of range.");
+                }
+                for (auto* node = meshInstance->GetNode(); node; node = node->GetParent())
+                {
+                    const auto found = labelsByNode.find(node);
+                    if (found == labelsByNode.end())
+                    {
+                        continue;
+                    }
+                    candidate[rawIndex] = found->second;
+                    matched[labelIndexByNode.at(node)] = true;
+                    break;
+                }
+            }
+
+            for (size_t index = 0; index < matched.size(); ++index)
+            {
+                if (!matched[index])
+                {
+                    throw std::runtime_error(
+                        "Sensor label node has no descendant mesh instance: " +
+                        nodeNames[index]);
+                }
+            }
+            m_meshSensorLabels = std::move(candidate);
         }
 
         [[nodiscard]] HeadlessPbrScene::SceneStats get_scene_stats() const
@@ -1537,6 +1678,126 @@ namespace rtxns::python
             cmdList->commitBarriers();
         }
 
+        void record_sensor_view(
+            nvrhi::ICommandList* cmdList,
+            uint32_t cameraIndex,
+            bool recordIds)
+        {
+            if (cameraIndex >= m_views.size())
+            {
+                throw std::out_of_range("Camera index out of range.");
+            }
+            auto& slot = m_views[cameraIndex];
+            ensure_sensor_targets(slot);
+
+            slot.sensorGBuffer->Clear(cmdList);
+            GBufferFillPass::Context gbufferContext;
+            donut::render::InstancedOpaqueDrawStrategy opaqueDraws;
+            donut::render::RenderCompositeView(
+                cmdList,
+                &slot.view,
+                &slot.view,
+                *slot.sensorGBuffer->GBufferFramebuffer,
+                m_scene->GetSceneGraph()->GetRootNode(),
+                opaqueDraws,
+                *m_sensorGBufferPass,
+                gbufferContext,
+                "SensorGBufferOpaque");
+            donut::render::TransparentDrawStrategy transparentDraws;
+            donut::render::RenderCompositeView(
+                cmdList,
+                &slot.view,
+                &slot.view,
+                *slot.sensorGBuffer->GBufferFramebuffer,
+                m_scene->GetSceneGraph()->GetRootNode(),
+                transparentDraws,
+                *m_sensorGBufferPass,
+                gbufferContext,
+                "SensorGBufferTransparent");
+
+            if (recordIds)
+            {
+                cmdList->clearTextureUInt(
+                    slot.sensorIdTarget,
+                    nvrhi::AllSubresources,
+                    std::numeric_limits<uint32_t>::max());
+                GBufferFillPass::Context idContext;
+                donut::render::InstancedOpaqueDrawStrategy idOpaqueDraws;
+                donut::render::RenderCompositeView(
+                    cmdList,
+                    &slot.view,
+                    &slot.view,
+                    *slot.sensorIdFramebuffer,
+                    m_scene->GetSceneGraph()->GetRootNode(),
+                    idOpaqueDraws,
+                    *m_sensorIdPass,
+                    idContext,
+                    "SensorIdOpaque");
+                donut::render::TransparentDrawStrategy idTransparentDraws;
+                donut::render::RenderCompositeView(
+                    cmdList,
+                    &slot.view,
+                    &slot.view,
+                    *slot.sensorIdFramebuffer,
+                    m_scene->GetSceneGraph()->GetRootNode(),
+                    idTransparentDraws,
+                    *m_sensorIdPass,
+                    idContext,
+                    "SensorIdTransparent");
+            }
+
+            cmdList->setTextureState(
+                slot.sensorGBuffer->Depth,
+                nvrhi::AllSubresources,
+                nvrhi::ResourceStates::CopySource);
+            cmdList->setTextureState(
+                slot.sensorGBuffer->GBufferNormals,
+                nvrhi::AllSubresources,
+                nvrhi::ResourceStates::CopySource);
+            if (recordIds)
+            {
+                cmdList->setTextureState(
+                    slot.sensorIdTarget,
+                    nvrhi::AllSubresources,
+                    nvrhi::ResourceStates::CopySource);
+            }
+            cmdList->commitBarriers();
+            cmdList->copyTexture(
+                slot.sensorDepthReadback,
+                nvrhi::TextureSlice(),
+                slot.sensorGBuffer->Depth,
+                nvrhi::TextureSlice());
+            cmdList->copyTexture(
+                slot.sensorNormalReadback,
+                nvrhi::TextureSlice(),
+                slot.sensorGBuffer->GBufferNormals,
+                nvrhi::TextureSlice());
+            if (recordIds)
+            {
+                cmdList->copyTexture(
+                    slot.sensorIdReadback,
+                    nvrhi::TextureSlice(),
+                    slot.sensorIdTarget,
+                    nvrhi::TextureSlice());
+            }
+            cmdList->setTextureState(
+                slot.sensorGBuffer->Depth,
+                nvrhi::AllSubresources,
+                nvrhi::ResourceStates::DepthWrite);
+            cmdList->setTextureState(
+                slot.sensorGBuffer->GBufferNormals,
+                nvrhi::AllSubresources,
+                nvrhi::ResourceStates::RenderTarget);
+            if (recordIds)
+            {
+                cmdList->setTextureState(
+                    slot.sensorIdTarget,
+                    nvrhi::AllSubresources,
+                    nvrhi::ResourceStates::RenderTarget);
+            }
+            cmdList->commitBarriers();
+        }
+
         // --- Shared AS build/update (Week 3 fix, used by all batch paths) ---
 
         void record_or_build_shadow_as(nvrhi::ICommandList* cmdList)
@@ -1759,6 +2020,150 @@ namespace rtxns::python
             return pixels;
         }
 
+        HeadlessPbrScene::SensorFrame read_sensor_slot(
+            RenderViewSlot& slot,
+            uint32_t productMask)
+        {
+            auto* device = m_context->device();
+            HeadlessPbrScene::SensorFrame frame;
+            frame.width = slot.width;
+            frame.height = slot.height;
+            const size_t pixelCount =
+                static_cast<size_t>(slot.width) * static_cast<size_t>(slot.height);
+
+            if ((productMask & HeadlessPbrScene::SensorDepth) != 0)
+            {
+                size_t rowPitch = 0;
+                const auto* mapped = static_cast<const uint8_t*>(
+                    device->mapStagingTexture(
+                        slot.sensorDepthReadback,
+                        nvrhi::TextureSlice(),
+                        nvrhi::CpuAccessMode::Read,
+                        &rowPitch));
+                if (!mapped)
+                {
+                    throw std::runtime_error("Failed to map sensor depth texture.");
+                }
+                frame.depth_linear.resize(pixelCount);
+                const float nearPlane = slot.z_near;
+                const float farPlane = slot.z_far;
+                for (uint32_t row = 0; row < slot.height; ++row)
+                {
+                    const auto* source = reinterpret_cast<const float*>(
+                        mapped + rowPitch * row);
+                    auto* destination = frame.depth_linear.data() +
+                        static_cast<size_t>(row) * slot.width;
+                    for (uint32_t column = 0; column < slot.width; ++column)
+                    {
+                        const float normalizedDepth = source[column];
+                        destination[column] =
+                            normalizedDepth >= 1.0f - 1.0e-7f
+                            ? 0.0f
+                            : nearPlane * farPlane /
+                                (farPlane - normalizedDepth * (farPlane - nearPlane));
+                    }
+                }
+                device->unmapStagingTexture(slot.sensorDepthReadback);
+            }
+
+            if ((productMask & HeadlessPbrScene::SensorNormal) != 0)
+            {
+                size_t rowPitch = 0;
+                const auto* mapped = static_cast<const uint8_t*>(
+                    device->mapStagingTexture(
+                        slot.sensorNormalReadback,
+                        nvrhi::TextureSlice(),
+                        nvrhi::CpuAccessMode::Read,
+                        &rowPitch));
+                if (!mapped)
+                {
+                    throw std::runtime_error("Failed to map sensor normal texture.");
+                }
+                frame.normal_world.resize(pixelCount * 3u);
+                for (uint32_t row = 0; row < slot.height; ++row)
+                {
+                    const auto* source = reinterpret_cast<const int16_t*>(
+                        mapped + rowPitch * row);
+                    for (uint32_t column = 0; column < slot.width; ++column)
+                    {
+                        const size_t sourceOffset = static_cast<size_t>(column) * 4u;
+                        const size_t destinationOffset =
+                            (static_cast<size_t>(row) * slot.width + column) * 3u;
+                        dm::float3 normal(
+                            std::max(-1.0f, source[sourceOffset] / 32767.0f),
+                            std::max(-1.0f, source[sourceOffset + 1u] / 32767.0f),
+                            std::max(-1.0f, source[sourceOffset + 2u] / 32767.0f));
+                        const float lengthSquared = dm::dot(normal, normal);
+                        if (lengthSquared > 1.0e-12f)
+                        {
+                            normal /= std::sqrt(lengthSquared);
+                        }
+                        frame.normal_world[destinationOffset] = normal.x;
+                        frame.normal_world[destinationOffset + 1u] = normal.y;
+                        frame.normal_world[destinationOffset + 2u] = normal.z;
+                    }
+                }
+                device->unmapStagingTexture(slot.sensorNormalReadback);
+            }
+
+            if ((productMask & (HeadlessPbrScene::SensorInstance |
+                    HeadlessPbrScene::SensorSemantic)) != 0)
+            {
+                size_t rowPitch = 0;
+                const auto* mapped = static_cast<const uint8_t*>(
+                    device->mapStagingTexture(
+                        slot.sensorIdReadback,
+                        nvrhi::TextureSlice(),
+                        nvrhi::CpuAccessMode::Read,
+                        &rowPitch));
+                if (!mapped)
+                {
+                    throw std::runtime_error("Failed to map sensor id texture.");
+                }
+                if ((productMask & HeadlessPbrScene::SensorInstance) != 0)
+                {
+                    frame.instance.resize(pixelCount);
+                }
+                if ((productMask & HeadlessPbrScene::SensorSemantic) != 0)
+                {
+                    frame.semantic.resize(pixelCount);
+                }
+                for (uint32_t row = 0; row < slot.height; ++row)
+                {
+                    const auto* source = reinterpret_cast<const uint32_t*>(
+                        mapped + rowPitch * row);
+                    for (uint32_t column = 0; column < slot.width; ++column)
+                    {
+                        const uint32_t rawInstance =
+                            source[static_cast<size_t>(column) * 4u + 1u];
+                        MeshSensorLabel label;
+                        if (rawInstance != std::numeric_limits<uint32_t>::max())
+                        {
+                            if (rawInstance >= m_meshSensorLabels.size())
+                            {
+                                device->unmapStagingTexture(slot.sensorIdReadback);
+                                throw std::runtime_error(
+                                    "Sensor pass returned an invalid mesh instance index.");
+                            }
+                            label = m_meshSensorLabels[rawInstance];
+                        }
+                        const size_t destinationOffset =
+                            static_cast<size_t>(row) * slot.width + column;
+                        if (!frame.instance.empty())
+                        {
+                            frame.instance[destinationOffset] = label.instance_id;
+                        }
+                        if (!frame.semantic.empty())
+                        {
+                            frame.semantic[destinationOffset] = label.semantic_id;
+                        }
+                    }
+                }
+                device->unmapStagingTexture(slot.sensorIdReadback);
+            }
+            return frame;
+        }
+
         /// Single-command-list batch rendering (Week 2 Patch D).
         std::vector<std::vector<uint8_t>> render_frame_batch_v2(const std::vector<uint32_t>& indices)
         {
@@ -1809,6 +2214,135 @@ namespace rtxns::python
                 outputs.push_back(readback_slot(m_views[idx]));
 
             return outputs;
+        }
+
+        std::vector<HeadlessPbrScene::SensorFrame> render_sensor_batch_impl(
+            const std::vector<uint32_t>& indices,
+            uint32_t productMask)
+        {
+            constexpr uint32_t validMask = HeadlessPbrScene::SensorAll;
+            if (productMask == 0 || (productMask & ~validMask) != 0)
+            {
+                throw std::invalid_argument("Sensor product mask is empty or invalid.");
+            }
+            if (indices.empty())
+            {
+                return {};
+            }
+            for (size_t index = 0; index < indices.size(); ++index)
+            {
+                if (indices[index] >= m_views.size())
+                {
+                    throw std::out_of_range("Camera index out of range.");
+                }
+                if (std::find(indices.begin(), indices.begin() + index, indices[index]) !=
+                    indices.begin() + index)
+                {
+                    throw std::invalid_argument(
+                        "Camera indices in a sensor batch must be unique.");
+                }
+            }
+            if (!m_scene)
+            {
+                throw std::runtime_error("No scene has been loaded.");
+            }
+
+            const bool wantsColor = (productMask & HeadlessPbrScene::SensorColor) != 0;
+            const bool wantsGeometry =
+                (productMask & (HeadlessPbrScene::SensorDepth |
+                    HeadlessPbrScene::SensorNormal |
+                    HeadlessPbrScene::SensorInstance |
+                    HeadlessPbrScene::SensorSemantic)) != 0;
+            const bool wantsIds =
+                (productMask & (HeadlessPbrScene::SensorInstance |
+                    HeadlessPbrScene::SensorSemantic)) != 0;
+
+            if (!wantsGeometry)
+            {
+                auto colorFrames = render_frame_batch_v2(indices);
+                std::vector<HeadlessPbrScene::SensorFrame> frames;
+                frames.reserve(indices.size());
+                for (size_t index = 0; index < indices.size(); ++index)
+                {
+                    HeadlessPbrScene::SensorFrame frame;
+                    frame.width = m_views[indices[index]].width;
+                    frame.height = m_views[indices[index]].height;
+                    frame.color_rgba8 = std::move(colorFrames[index]);
+                    frames.push_back(std::move(frame));
+                }
+                return frames;
+            }
+
+            for (const auto cameraIndex : indices)
+            {
+                ensure_sensor_targets(m_views[cameraIndex]);
+            }
+
+            auto* device = m_context->device();
+            if (wantsColor && !m_rtShadowPass && m_context)
+            {
+                m_rtShadowPass = std::make_unique<rtxns::shadow::RayTracedShadowPass>();
+                m_rtShadowPass->initialize(
+                    device,
+                    m_context->shader_factory().get(),
+                    0,
+                    0);
+            }
+
+            auto cmdList = device->createCommandList();
+            cmdList->open();
+            m_lastStats = {};
+            m_lastStats.rt_shadows_enabled = wantsColor && m_rtShadowsEnabled &&
+                m_rtShadowPass && m_rtShadowPass->isValid();
+            const auto refreshStart = std::chrono::high_resolution_clock::now();
+            m_scene->Refresh(cmdList, m_frame_index++);
+            const auto refreshEnd = std::chrono::high_resolution_clock::now();
+            m_lastStats.scene_refresh_cpu_ms =
+                std::chrono::duration<double, std::milli>(refreshEnd - refreshStart).count();
+            if (m_scene->GetSceneGraph()->GetLights().empty())
+            {
+                ensure_default_light_attached();
+            }
+            if (wantsColor)
+            {
+                record_or_build_shadow_as(cmdList);
+            }
+
+            const auto sensorRecordStart = std::chrono::high_resolution_clock::now();
+            for (size_t index = 0; index < indices.size(); ++index)
+            {
+                if (wantsColor)
+                {
+                    sync_and_record_view(
+                        cmdList,
+                        indices[index],
+                        index == 0,
+                        false);
+                }
+                record_sensor_view(cmdList, indices[index], wantsIds);
+            }
+            const auto sensorRecordEnd = std::chrono::high_resolution_clock::now();
+            m_lastStats.sensor_record_cpu_ms =
+                std::chrono::duration<double, std::milli>(
+                    sensorRecordEnd - sensorRecordStart).count();
+
+            cmdList->close();
+            device->executeCommandList(cmdList);
+            device->waitForIdle();
+
+            std::vector<HeadlessPbrScene::SensorFrame> frames;
+            frames.reserve(indices.size());
+            for (const auto cameraIndex : indices)
+            {
+                auto frame = read_sensor_slot(m_views[cameraIndex], productMask);
+                if (wantsColor)
+                {
+                    frame.color_rgba8 = readback_slot(m_views[cameraIndex]);
+                }
+                frames.push_back(std::move(frame));
+            }
+            device->runGarbageCollection();
+            return frames;
         }
 
         /// TODO(week2): Remove after v2 is validated.
@@ -1971,6 +2505,34 @@ namespace rtxns::python
             }
         }
 
+        void rebuild_default_sensor_labels()
+        {
+            m_meshSensorLabels.clear();
+            if (!m_scene || !m_scene->GetSceneGraph())
+            {
+                return;
+            }
+
+            const auto& meshInstances = m_scene->GetSceneGraph()->GetMeshInstances();
+            m_meshSensorLabels.resize(meshInstances.size());
+            for (const auto& meshInstance : meshInstances)
+            {
+                if (!meshInstance || meshInstance->GetInstanceIndex() < 0)
+                {
+                    continue;
+                }
+                const auto rawIndex = static_cast<size_t>(meshInstance->GetInstanceIndex());
+                if (rawIndex >= m_meshSensorLabels.size())
+                {
+                    throw std::runtime_error("Scene mesh instance index is out of range.");
+                }
+                m_meshSensorLabels[rawIndex] = MeshSensorLabel{
+                    static_cast<uint32_t>(rawIndex + 1u),
+                    0u,
+                };
+            }
+        }
+
         void ensure_default_light_attached()
         {
             if (!m_scene || !m_scene->GetSceneGraph() || !m_scene->GetSceneGraph()->GetRootNode())
@@ -2016,6 +2578,77 @@ namespace rtxns::python
             }
         }
 
+        void ensure_sensor_targets(RenderViewSlot& slot)
+        {
+            if (slot.sensorGBuffer && slot.sensorIdTarget &&
+                slot.sensorDepthReadback && slot.sensorNormalReadback &&
+                slot.sensorIdReadback)
+            {
+                return;
+            }
+            if (slot.width == 0 || slot.height == 0)
+            {
+                throw std::runtime_error("Camera targets must be initialized first.");
+            }
+
+            auto* device = m_context->device();
+            slot.sensorGBuffer = std::make_unique<GBufferRenderTargets>();
+            slot.sensorGBuffer->Init(
+                device,
+                dm::uint2(slot.width, slot.height),
+                1u,
+                false,
+                false);
+
+            nvrhi::TextureDesc depthDesc;
+            depthDesc.width = slot.width;
+            depthDesc.height = slot.height;
+            depthDesc.dimension = nvrhi::TextureDimension::Texture2D;
+            depthDesc.debugName = "DonutRenderPy/SensorDepth";
+            depthDesc.format = nvrhi::Format::D32;
+            depthDesc.isRenderTarget = true;
+            depthDesc.useClearValue = true;
+            depthDesc.clearValue = nvrhi::Color(1.0f);
+            depthDesc.initialState = nvrhi::ResourceStates::DepthWrite;
+            depthDesc.keepInitialState = true;
+            slot.sensorGBuffer->Depth = device->createTexture(depthDesc);
+            slot.sensorGBuffer->GBufferFramebuffer->DepthTarget =
+                slot.sensorGBuffer->Depth;
+
+            nvrhi::TextureDesc idDesc;
+            idDesc.width = slot.width;
+            idDesc.height = slot.height;
+            idDesc.dimension = nvrhi::TextureDimension::Texture2D;
+            idDesc.debugName = "DonutRenderPy/SensorMaterialInstanceId";
+            idDesc.format = nvrhi::Format::RGBA32_UINT;
+            idDesc.isRenderTarget = true;
+            idDesc.initialState = nvrhi::ResourceStates::RenderTarget;
+            idDesc.keepInitialState = true;
+            slot.sensorIdTarget = device->createTexture(idDesc);
+            slot.sensorIdFramebuffer = std::make_shared<FramebufferFactory>(device);
+            slot.sensorIdFramebuffer->RenderTargets = {slot.sensorIdTarget};
+            slot.sensorIdFramebuffer->DepthTarget = slot.sensorGBuffer->Depth;
+
+            nvrhi::TextureDesc stagingDesc;
+            stagingDesc.width = slot.width;
+            stagingDesc.height = slot.height;
+            stagingDesc.dimension = nvrhi::TextureDimension::Texture2D;
+            stagingDesc.debugName = "DonutRenderPy/SensorDepthReadback";
+            stagingDesc.format = nvrhi::Format::D32;
+            slot.sensorDepthReadback = device->createStagingTexture(
+                stagingDesc, nvrhi::CpuAccessMode::Read);
+
+            stagingDesc.debugName = "DonutRenderPy/SensorNormalReadback";
+            stagingDesc.format = nvrhi::Format::RGBA16_SNORM;
+            slot.sensorNormalReadback = device->createStagingTexture(
+                stagingDesc, nvrhi::CpuAccessMode::Read);
+
+            stagingDesc.debugName = "DonutRenderPy/SensorIdReadback";
+            stagingDesc.format = nvrhi::Format::RGBA32_UINT;
+            slot.sensorIdReadback = device->createStagingTexture(
+                stagingDesc, nvrhi::CpuAccessMode::Read);
+        }
+
         void resize_slot_targets(RenderViewSlot& slot, uint32_t width, uint32_t height)
         {
             if (width == slot.width && height == slot.height && slot.colorTarget && slot.depthTarget && slot.readbackTarget)
@@ -2025,6 +2658,13 @@ namespace rtxns::python
 
             auto* device = m_context->device();
             device->waitForIdle();
+
+            slot.sensorGBuffer.reset();
+            slot.sensorIdFramebuffer.reset();
+            slot.sensorIdTarget.Reset();
+            slot.sensorDepthReadback.Reset();
+            slot.sensorNormalReadback.Reset();
+            slot.sensorIdReadback.Reset();
 
             nvrhi::TextureDesc color_desc;
             color_desc.width = width;
@@ -2110,6 +2750,8 @@ namespace rtxns::python
         std::shared_ptr<TextureCache> m_texture_cache;
         std::unique_ptr<Scene> m_scene;
         std::unique_ptr<ForwardShadingPass> m_forward_pass;
+        std::unique_ptr<GBufferFillPass> m_sensorGBufferPass;
+        std::unique_ptr<MaterialIDPass> m_sensorIdPass;
         std::shared_ptr<FramebufferFactory> m_framebuffer_factory;
         nvrhi::TextureHandle m_color_target;
         nvrhi::TextureHandle m_depth_target;
@@ -2173,6 +2815,7 @@ namespace rtxns::python
         std::vector<donut::engine::SceneGraphNode*> m_nodeHandles;
         std::unordered_map<std::string, uint32_t> m_nodeHandleByName;
         std::unordered_set<std::string> m_ambiguousNodeNames;
+        std::vector<MeshSensorLabel> m_meshSensorLabels;
 
         // --- Async batch tracking ---
         struct PendingBatch {
@@ -2351,6 +2994,21 @@ namespace rtxns::python
         uint32_t handle) const
     {
         return m_impl->get_node_world_transform_by_handle(handle);
+    }
+
+    void HeadlessPbrScene::set_node_labels(
+        const std::vector<std::string>& node_names,
+        const std::vector<uint32_t>& instance_ids,
+        const std::vector<uint32_t>& semantic_ids)
+    {
+        m_impl->set_node_labels(node_names, instance_ids, semantic_ids);
+    }
+
+    std::vector<HeadlessPbrScene::SensorFrame> HeadlessPbrScene::render_sensor_batch(
+        const std::vector<uint32_t>& camera_indices,
+        uint32_t product_mask)
+    {
+        return m_impl->render_sensor_batch_impl(camera_indices, product_mask);
     }
 
     HeadlessPbrScene::SceneStats HeadlessPbrScene::get_scene_stats() const

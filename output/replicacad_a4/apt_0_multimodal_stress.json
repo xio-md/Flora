@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "scene": "apt_0",
+  "resolution": [
+    64,
+    48
+  ],
+  "products": [
+    "color",
+    "depth",
+    "normal",
+    "instance",
+    "semantic"
+  ],
+  "stress_frames": 1000,
+  "warmup_frames": 30,
+  "rt_shadows": false,
+  "movable_joints_per_frame": 26,
+  "sensor_label_count": 120,
+  "cpu_fk_reference_ms_per_pose": 0.38459339999826625,
+  "timing_ms_per_frame": {
+    "native_pose_write_cpu": 0.016643000024487264,
+    "scene_refresh_record_cpu": 0.14574000000000015,
+    "sensor_record_cpu": 0.2596244000000003,
+    "render_execute_readback_decode_wall": 0.8818835001220577,
+    "full_stress_loop_wall": 0.983261000001221
+  },
+  "consistency": {
+    "mask_mismatch_frames": 0,
+    "semantic_mismatch_frames": 0,
+    "unknown_instance_frames": 0,
+    "reference_hashes": {
+      "color": "698ee6192919d1becd35ad6a574de91e833c2c1907437288e5a6723356c26dba",
+      "depth": "8b1406e672bf533f4fbda09423cba571ca80a9c285a9e7c3347896d2587ffce9",
+      "normal": "41644a04f5dd102f7249948f1d32dfc5b23fa9a43bb48691ca3f932da7bddcd5",
+      "instance": "8d81960d63e0b0b191e0bbc5064c1b1a697befeb744e4ad0bb52ef24b0a5d5e4",
+      "semantic": "a17c8d4cd0f4498b04939be5c6b55c4294dd7f19bb3c3929d9cc3c98120b703a"
+    },
+    "restored_hashes": {
+      "color": "698ee6192919d1becd35ad6a574de91e833c2c1907437288e5a6723356c26dba",
+      "depth": "8b1406e672bf533f4fbda09423cba571ca80a9c285a9e7c3347896d2587ffce9",
+      "normal": "41644a04f5dd102f7249948f1d32dfc5b23fa9a43bb48691ca3f932da7bddcd5",
+      "instance": "8d81960d63e0b0b191e0bbc5064c1b1a697befeb744e4ad0bb52ef24b0a5d5e4",
+      "semantic": "a17c8d4cd0f4498b04939be5c6b55c4294dd7f19bb3c3929d9cc3c98120b703a"
+    }
+  },
+  "resources": {
+    "node_handle_count_before": 380,
+    "node_handle_count_after": 380,
+    "rss_before_bytes": 358248448,
+    "rss_after_bytes": 358912000,
+    "rss_growth_mb": 0.6328125,
+    "max_rss_growth_mb": 64.0,
+    "native_scene_stats_before": {
+      "mesh_instances": 171,
+      "unique_meshes": 127,
+      "unique_geometries": 127,
+      "unique_materials": 111,
+      "unique_vertices": 326228,
+      "unique_indices": 414018,
+      "shadow_instances": 171
+    },
+    "native_scene_stats_after": {
+      "mesh_instances": 171,
+      "unique_meshes": 127,
+      "unique_geometries": 127,
+      "unique_materials": 111,
+      "unique_vertices": 326228,
+      "unique_indices": 414018,
+      "shadow_instances": 171
+    }
+  },
+  "checks": {
+    "all_valid_masks_aligned": true,
+    "all_instance_ids_registered": true,
+    "all_semantic_mappings_exact": true,
+    "all_products_restore_exactly": true,
+    "native_handle_count_stable": true,
+    "native_scene_stats_stable": true,
+    "scene_artifact_not_rewritten": true,
+    "rss_growth_within_limit": true
+  },
+  "passed": true
+}

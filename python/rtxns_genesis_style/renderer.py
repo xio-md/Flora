@@ -13,6 +13,12 @@ from typing import Any, Mapping, Optional, Sequence
 import numpy as np
 
 from .glb_builder import EmbeddedTextureDesc, GlbSceneBuilder
+from .sensor import (
+    SENSOR_PRODUCTS,
+    SensorFrame,
+    decode_sensor_frames,
+    normalize_sensor_products,
+)
 
 
 def _repo_root() -> Path:
@@ -770,6 +776,7 @@ class GenesisStyleRenderer:
         self._last_camera_uid: Optional[str] = None
         self._pending_rigid_updates: dict[str, np.ndarray] = {}
         self._rigid_node_handles: dict[str, int] = {}
+        self._native_camera_indices: dict[str, int] = {}
         self._t = -1
         self._destroyed = False
 
@@ -993,6 +1000,7 @@ class GenesisStyleRenderer:
         material_indices: dict[str, int] = {}
         renderable_count = 0
         rigid_node_names: list[str] = []
+        sensor_node_names: list[str] = []
 
         for shape_name, record in self._shapes.items():
             vertices, triangles, normals, uvs = self._shape_to_mesh(record)
@@ -1025,6 +1033,7 @@ class GenesisStyleRenderer:
             )
             if record.kind == "rigid":
                 rigid_node_names.append(shape_name)
+            sensor_node_names.append(shape_name)
             renderable_count += 1
 
         if renderable_count == 0:
@@ -1038,6 +1047,12 @@ class GenesisStyleRenderer:
         if rigid_node_names and hasattr(self._scene, "get_node_handles"):
             handles = self._scene.get_node_handles(rigid_node_names)
             self._rigid_node_handles.update(zip(rigid_node_names, handles))
+        if sensor_node_names and hasattr(self._scene, "set_node_labels"):
+            self._scene.set_node_labels(
+                sensor_node_names,
+                list(range(1, len(sensor_node_names) + 1)),
+                [0] * len(sensor_node_names),
+            )
         self._scene.set_ambient(self._ambient_top, self._ambient_bottom)
         self._scene.set_default_light(
             self._default_light_direction,
@@ -1075,6 +1090,46 @@ class GenesisStyleRenderer:
         rgba = self._scene.render_frame()
         return np.frombuffer(rgba, dtype=np.uint8).reshape(desc.res[1], desc.res[0], 4).copy()
 
+    def render_sensor(
+        self,
+        camera: Any,
+        products: Sequence[str] = SENSOR_PRODUCTS,
+        force_render: bool = False,
+        time: Optional[float] = None,
+    ) -> SensorFrame:
+        return self.render_sensor_batch(
+            [camera],
+            products=products,
+            force_render=force_render,
+            time=time,
+        )[0]
+
+    def render_sensor_batch(
+        self,
+        cameras: Sequence[Any],
+        products: Sequence[str] = SENSOR_PRODUCTS,
+        force_render: bool = False,
+        time: Optional[float] = None,
+    ) -> tuple[SensorFrame, ...]:
+        descs = tuple(_coerce_camera_desc(camera) for camera in cameras)
+        if not descs:
+            return ()
+        if len({desc.uid for desc in descs}) != len(descs):
+            raise ValueError("A sensor batch cannot contain duplicate camera UIDs.")
+        normalized_products = normalize_sensor_products(products)
+        for desc in descs:
+            self._cameras[desc.uid] = desc
+        self._last_camera_uid = descs[-1].uid
+        self.update_scene(force_render=force_render, time=time)
+        camera_indices = [self._ensure_native_camera_desc(desc) for desc in descs]
+        raw_frames = self._scene.render_sensor_batch(
+            camera_indices,
+            list(normalized_products),
+        )
+        self._camera_dirty = False
+        self.camera_updated = False
+        return decode_sensor_frames(raw_frames)
+
     def destroy(self) -> None:
         if self._destroyed:
             return
@@ -1085,6 +1140,7 @@ class GenesisStyleRenderer:
         self._last_camera_uid = None
         self._pending_rigid_updates.clear()
         self._rigid_node_handles.clear()
+        self._native_camera_indices.clear()
         self._shapes.clear()
         self._surfaces.clear()
         self._scene_loaded = False
@@ -1121,6 +1177,9 @@ class GenesisStyleRenderer:
         )
 
     def _apply_camera_desc(self, desc: CameraDesc) -> None:
+        for uid, index in tuple(self._native_camera_indices.items()):
+            if index == 0 and uid != desc.uid:
+                del self._native_camera_indices[uid]
         self._scene.set_camera(
             desc.pos,
             desc.lookat,
@@ -1131,6 +1190,39 @@ class GenesisStyleRenderer:
             float(desc.near),
             float(desc.far),
         )
+        self._native_camera_indices[desc.uid] = 0
+
+    def _ensure_native_camera_desc(self, desc: CameraDesc) -> int:
+        camera_index = self._native_camera_indices.get(desc.uid)
+        camera_args = (
+            desc.pos,
+            desc.lookat,
+            desc.up,
+            float(desc.fov),
+            int(desc.res[0]),
+            int(desc.res[1]),
+            float(desc.near),
+            float(desc.far),
+        )
+        if camera_index is None:
+            claimed_indices = set(self._native_camera_indices.values())
+            reusable_index = next(
+                (
+                    index
+                    for index in range(int(self._scene.camera_count))
+                    if index not in claimed_indices
+                ),
+                None,
+            )
+            if reusable_index is not None:
+                camera_index = reusable_index
+                self._scene.set_camera_at(camera_index, *camera_args)
+            else:
+                camera_index = int(self._scene.add_camera(*camera_args))
+            self._native_camera_indices[desc.uid] = camera_index
+        else:
+            self._scene.set_camera_at(camera_index, *camera_args)
+        return camera_index
 
     def _apply_latest_camera(self) -> None:
         if self._last_camera_uid is None:

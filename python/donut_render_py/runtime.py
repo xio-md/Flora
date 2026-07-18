@@ -15,6 +15,7 @@ import numpy as np
 from rtxns_genesis_style import CameraDesc as _BackendCameraDesc
 from rtxns_genesis_style import EmbeddedTextureDesc as _BackendTextureDesc
 from rtxns_genesis_style import GenesisStyleRenderer
+from rtxns_genesis_style import SensorFrame as _BackendSensorFrame
 from rtxns_genesis_style import SurfaceDesc as _BackendSurfaceDesc
 
 from .errors import (
@@ -1527,6 +1528,54 @@ class Scene:
             time=self._time,
         )
         return np.ascontiguousarray(rgba, dtype=np.uint8).tobytes()
+
+    def render_sensor(
+        self,
+        camera: Camera | str,
+        products: tuple[str, ...] = (
+            "color",
+            "depth",
+            "normal",
+            "instance",
+            "semantic",
+        ),
+    ) -> _BackendSensorFrame:
+        self._check_ready()
+        camera_object = self._resolve_camera(camera)
+        self.update_scene(time=self._time)
+        if self._backend is None:
+            raise InvalidStateError("Scene backend is unavailable after update_scene().")
+        return self._backend.render_sensor(
+            _camera_to_backend_desc(camera_object),
+            products=products,
+            force_render=False,
+            time=self._time,
+        )
+
+    def render_sensor_batch(
+        self,
+        cameras: tuple[Camera | str, ...],
+        products: tuple[str, ...] = (
+            "color",
+            "depth",
+            "normal",
+            "instance",
+            "semantic",
+        ),
+    ) -> tuple[_BackendSensorFrame, ...]:
+        self._check_ready()
+        camera_objects = tuple(self._resolve_camera(camera) for camera in cameras)
+        if not camera_objects:
+            return ()
+        self.update_scene(time=self._time)
+        if self._backend is None:
+            raise InvalidStateError("Scene backend is unavailable after update_scene().")
+        return self._backend.render_sensor_batch(
+            [_camera_to_backend_desc(camera) for camera in camera_objects],
+            products=products,
+            force_render=False,
+            time=self._time,
+        )
 
     def destroy(self) -> None:
         if self._destroyed:
